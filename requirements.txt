@@ -1,0 +1,42 @@
+# ==== AI 框架 ====
+langgraph>=0.3.0
+langchain>=1.0.0
+langchain-core>=1.0.0
+langchain-community>=0.4.0
+langchain-huggingface>=0.3.0
+langchain-text-splitters>=0.3.0
+
+# ==== 向量检索 ====
+faiss-cpu>=1.7.0
+rank_bm25>=0.2.0
+sentence-transformers>=3.0.0
+
+# ==== LLM ====
+openai>=1.50.0
+dashscope>=1.25.0
+
+# ==== PDF 解析 ====
+PyMuPDF>=1.24.0
+PyPDF2>=3.0.0
+camelot-py>=0.11.0
+pdfplumber>=0.11.0
+
+# ==== Office 解析 ====
+python-docx>=1.1.0
+openpyxl>=3.1.0
+
+# ==== 图片处理 ====
+Pillow>=10.0.0
+pytesseract>=0.3.0
+
+# ==== Web 服务 ====
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart>=0.0.12
+pydantic>=2.0.0
+sse-starlette>=2.0.0
+
+# ==== 工具 ====
+python-dotenv>=1.0.0
+numpy>=1.24.0
+loguru>=0.7.0

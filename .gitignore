@@ -1,0 +1,33 @@
+# ==== 环境变量（含 API Key）====
+.env
+
+# ==== Python 缓存 ====
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ==== 向量索引缓存 ====
+data/index/
+data/index_test/
+data/images/
+
+# ==== IDE ====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ==== 操作系统 ====
+.DS_Store
+Thumbs.db
+
+# ==== 日志 ====
+*.log
+logs/
+
+# ==== 临时文件 ====
+tmp/
+temp/
