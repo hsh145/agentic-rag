@@ -30,7 +30,7 @@ class IndexManager:
 
         # 建 FAISS 索引
         matrix = np.array(vectors).astype("float32")
-        self.index = faiss.IndexFlatIP(embedding_dim)  # 内积 = 余弦相似度（向量已归一化）
+        self.index = faiss.IndexFlatIP(embedding_dim)  # 内积 = 余弦相似度（embedder.py 已做 L2 归一化）
         self.index.add(matrix)
         self.documents = chunks
         logger.info(f"FAISS 索引构建完成，共 {len(chunks)} 个向量，维度 {embedding_dim}")

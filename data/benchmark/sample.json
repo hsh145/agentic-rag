@@ -1,0 +1,26 @@
+{
+  "title": "SFT微调参数配置",
+  "parameters": [
+    {
+      "name": "learning_rate",
+      "value": 2e-5,
+      "description": "学习率",
+      "recommended_range": [1e-5, 5e-5]
+    },
+    {
+      "name": "batch_size",
+      "value": 8,
+      "description": "批次大小",
+      "recommended_range": [4, 32]
+    },
+    {
+      "name": "num_epochs",
+      "value": 3,
+      "description": "训练轮次",
+      "recommended_range": [2, 5]
+    }
+  ],
+  "optimizer": "AdamW",
+  "scheduler": "cosine_with_warmup",
+  "notes": "LoRA rank=8, alpha=16, target_modules=['q_proj', 'v_proj']"
+}

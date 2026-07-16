@@ -1,6 +1,17 @@
 # ==== 环境变量（含 API Key）====
 .env
 
+# ==== 第三方仓库（各自带 .git，不应进本仓库）====
+OmniDocBench/
+temp_rag_anything/
+
+# ==== 运行产物（索引、文档缓存、数据库）====
+data/index/
+data/index_test/
+data/images/
+data/docs/
+data/memory.db
+
 # ==== Python 缓存 ====
 __pycache__/
 *.pyc
@@ -9,10 +20,10 @@ __pycache__/
 dist/
 build/
 
-# ==== 向量索引缓存 ====
-data/index/
-data/index_test/
-data/images/
+# ==== 简历/自我评估文档（不上传公开仓库）====
+docs/PROJECT_FOR_RESUME.md
+AgenticRAG_设计方案与面试准备.txt
+agentops-health-check-*.md
 
 # ==== IDE ====
 .idea/

@@ -28,8 +28,26 @@ class OfficeParser:
         try:
             from docx import Document as DocxDocument
             doc = DocxDocument(str(path))
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            content = "\n".join(paragraphs)
+            parts = []
+
+            # 提取段落
+            for p in doc.paragraphs:
+                if p.text.strip():
+                    parts.append(p.text.strip())
+
+            # 提取表格
+            for ti, table in enumerate(doc.tables):
+                parts.append(f"\n[表格 {ti+1}]")
+                # 表头
+                header = " | ".join(cell.text.strip() for cell in table.rows[0].cells)
+                parts.append(f"| {header} |")
+                parts.append("|" + " --- |" * len(table.rows[0].cells))
+                # 数据行
+                for row in table.rows[1:]:
+                    row_data = " | ".join(cell.text.strip() for cell in row.cells)
+                    parts.append(f"| {row_data} |")
+
+            content = "\n".join(parts)
             return [Document(
                 page_content=content,
                 metadata={
@@ -50,7 +68,7 @@ class OfficeParser:
             for sheet_name in wb.sheetnames:
                 ws = wb[sheet_name]
                 rows = []
-                for row in ws.iter_row(values_only=True):
+                for row in ws.iter_rows(values_only=True):
                     row_str = " | ".join(
                         [str(c) if c is not None else "" for c in row]
                     )

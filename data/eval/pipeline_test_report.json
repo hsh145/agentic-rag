@@ -1,0 +1,129 @@
+{
+  "parsing": {
+    "benchmark.pdf": {
+      "status": "ok",
+      "time_s": 1.6,
+      "num_docs": 2,
+      "total_chars": 752
+    },
+    "benchmark.docx": {
+      "status": "ok",
+      "time_s": 0.123,
+      "num_docs": 1,
+      "total_chars": 575
+    },
+    "benchmark.xlsx": {
+      "status": "ok",
+      "time_s": 0.285,
+      "num_docs": 2,
+      "total_chars": 521
+    },
+    "sample.txt": {
+      "status": "ok",
+      "time_s": 0.0,
+      "num_docs": 1,
+      "total_chars": 484
+    },
+    "sample.md": {
+      "status": "ok",
+      "time_s": 0.0,
+      "num_docs": 1,
+      "total_chars": 786
+    },
+    "sample.json": {
+      "status": "ok",
+      "time_s": 0.0,
+      "num_docs": 1,
+      "total_chars": 561
+    }
+  },
+  "chunking": {
+    "input_docs": 8,
+    "output_chunks": 14,
+    "time_s": 21.453,
+    "chunk_sizes": {
+      "min": 76,
+      "max": 486,
+      "avg": 265
+    }
+  },
+  "embedding": {
+    "model": "text-embedding-v2",
+    "total_vectors": 15,
+    "time_s": 0.002
+  },
+  "retrieval": {
+    "num_queries": 5,
+    "avg_time_s": 0.3313,
+    "results": [
+      {
+        "query": "LoRA的rank和alpha参数推荐值是多少？",
+        "time": 0.544766902923584,
+        "num_results": 5
+      },
+      {
+        "query": "Qwen-7B和Qwen-14B的MMLU分数分别是多少？",
+        "time": 0.22098946571350098,
+        "num_results": 5
+      },
+      {
+        "query": "A产品在Q1和Q2的销售额分别是多少？",
+        "time": 0.3276703357696533,
+        "num_results": 5
+      },
+      {
+        "query": "什么是SFT微调？",
+        "time": 0.2564384937286377,
+        "num_results": 5
+      },
+      {
+        "query": "模型量化可以降低多少显存占用？",
+        "time": 0.3066282272338867,
+        "num_results": 5
+      }
+    ]
+  },
+  "qa": {
+    "total": 3,
+    "success": 3,
+    "failed": 0,
+    "avg_time_s": 0.288,
+    "details": [
+      {
+        "question": "LoRA的rank和alpha参数推荐值是多少？",
+        "success": true,
+        "time_s": 0.327,
+        "retrieved_count": 3,
+        "found_topics": [
+          "rank=8",
+          "alpha=16"
+        ],
+        "missing_topics": []
+      },
+      {
+        "question": "Qwen-7B和Qwen-14B在C-Eval上的分数分别是多少？",
+        "success": true,
+        "time_s": 0.285,
+        "retrieved_count": 3,
+        "found_topics": [
+          "72.3",
+          "78.2"
+        ],
+        "missing_topics": []
+      },
+      {
+        "question": "A产品Q1和Q2的销售额及同比增长率是多少？",
+        "success": true,
+        "time_s": 0.251,
+        "retrieved_count": 3,
+        "found_topics": [
+          "1280",
+          "1450",
+          "12.5%",
+          "15.2%"
+        ],
+        "missing_topics": []
+      }
+    ]
+  }
+}

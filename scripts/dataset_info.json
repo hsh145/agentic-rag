@@ -1,0 +1,19 @@
+# LLaMA-Factory 数据集配置
+# 放在 LLaMA-Factory 的 data/dataset_info.json 中
+
+{
+  "judge_data": {
+    "file_name": "judge_data.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant",
+      "system_tag": "system"
+    }
+  }
+}

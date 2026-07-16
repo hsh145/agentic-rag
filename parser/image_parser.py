@@ -51,11 +51,23 @@ class ImageParser:
         )]
 
     def _ocr_text(self, path: Path) -> str:
-        """用 PaddleOCR/tesseract 提取图片文字"""
-        # PaddleOCR
+        """用 EasyOCR/PaddleOCR/tesseract 提取图片文字（按优先级尝试）"""
+
+        # 1) EasyOCR（纯 Python 实现，无系统依赖，兼容性最好）
+        try:
+            import easyocr
+            reader = easyocr.Reader(["ch_sim", "en"], gpu=False)
+            result = reader.readtext(str(path))
+            texts = [item[1] for item in result]
+            if texts:
+                return "\n".join(texts)
+        except Exception as e:
+            logger.warning(f"EasyOCR 失败: {e}")
+
+        # 2) PaddleOCR
         try:
             from paddleocr import PaddleOCR
-            ocr = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
+            ocr = PaddleOCR(lang="ch")
             result = ocr.ocr(str(path))
             texts = []
             for line_group in result:
@@ -66,7 +78,7 @@ class ImageParser:
         except Exception as e:
             logger.warning(f"PaddleOCR 不可用或失败: {e}")
 
-        # fallback: tesseract
+        # 3) Tesseract
         try:
             import pytesseract
             from PIL import Image
