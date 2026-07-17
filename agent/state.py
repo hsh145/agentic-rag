@@ -49,6 +49,9 @@ class AgenticRAGState(TypedDict):
     # ===== LLM 消息历史 =====
     messages: Annotated[List[BaseMessage], operator.add]
 
+    # ===== 追踪 =====
+    agentic_trace: Annotated[List[Dict[str, Any]], operator.add]  # 逐跳追踪数据（可视化用）
+
     # ===== 控制 =====
     error: Optional[str]                    # 错误信息
     completed: bool                         # 是否完成
@@ -82,6 +85,7 @@ def create_initial_state(
         "max_iterations": 2,
         "final_answer": "",
         "sources": [],
+        "agentic_trace": [],
         "messages": [],
         "error": None,
         "completed": False,

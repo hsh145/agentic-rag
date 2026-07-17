@@ -334,11 +334,14 @@ class LongTermMemory:
     def store_facts(self, session_id: str, facts: List[Dict]) -> int:
         """存储提取的事实到长期记忆
 
+        同 session + 同 entity + 同 category 的事实会覆盖更新（而非追加），
+        自动解决"用户之前说X，现在说Y"的矛盾。
+
         Args:
             session_id: 会话 ID
             facts: extract_facts 返回的事实列表
 
-        Returns: 存储数量
+        Returns: 存储/更新数量
         """
         if not facts:
             return 0
@@ -350,29 +353,39 @@ class LongTermMemory:
                 if not fact_text or len(fact_text) < 5:
                     continue
 
-                # 去重：检查是否已有相似事实
-                existing = conn.execute(
-                    "SELECT COUNT(*) as cnt FROM facts WHERE fact_text = ? AND session_id = ?",
-                    (fact_text, session_id),
-                ).fetchone()
-                if existing["cnt"] > 0:
-                    continue
+                entity = fact.get("entity", "")
+                category = fact.get("category", "general")
+                confidence = min(float(fact.get("confidence", 0.8)), 1.0)
 
-                conn.execute(
-                    """INSERT INTO facts (session_id, fact_text, entity, category, confidence)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (
-                        session_id,
-                        fact_text,
-                        fact.get("entity", ""),
-                        fact.get("category", "general"),
-                        min(float(fact.get("confidence", 0.8)), 1.0),
-                    ),
-                )
+                # 查询同 entity + category 是否已有旧事实
+                existing = conn.execute(
+                    """SELECT id FROM facts
+                       WHERE entity = ? AND category = ? AND session_id = ?
+                       LIMIT 1""",
+                    (entity, category, session_id),
+                ).fetchone()
+
+                if existing:
+                    # 覆盖：更新文本、置信度、时间戳，清空 embedding 让后台重新生成
+                    conn.execute(
+                        """UPDATE facts
+                           SET fact_text = ?, confidence = ?, created_at = datetime('now'),
+                               embedding = NULL
+                           WHERE id = ?""",
+                        (fact_text, confidence, existing["id"]),
+                    )
+                    logger.debug(f"长期记忆: 更新事实 id={existing['id']} ({entity}/{category})")
+                else:
+                    # 新增
+                    conn.execute(
+                        """INSERT INTO facts (session_id, fact_text, entity, category, confidence)
+                           VALUES (?, ?, ?, ?, ?)""",
+                        (session_id, fact_text, entity, category, confidence),
+                    )
                 stored += 1
 
         if stored:
-            logger.info(f"长期记忆: 新增 {stored} 条事实")
+            logger.info(f"长期记忆: 写入 {stored} 条事实（新增 + 覆盖）")
         return stored
 
     # --------------------------------------------------
@@ -398,7 +411,7 @@ class LongTermMemory:
             return self._keyword_recall(query, top_k, category)
 
     def _vector_recall(self, query: str, top_k: int, category: Optional[str]) -> List[str]:
-        """向量相似度检索"""
+        """向量相似度检索（含时间衰减）"""
         try:
             query_vec = self._embedding_model.embed_query(query)
         except Exception as e:
@@ -406,25 +419,28 @@ class LongTermMemory:
             return self._keyword_recall(query, top_k, category)
 
         import numpy as np
+        from datetime import datetime
 
         with self.db._conn() as conn:
             if category:
                 rows = conn.execute(
-                    "SELECT id, fact_text FROM facts WHERE category = ?",
+                    "SELECT id, fact_text, embedding, created_at FROM facts WHERE category = ?",
                     (category,),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT id, fact_text, embedding FROM facts ORDER BY created_at DESC LIMIT 200"
+                    "SELECT id, fact_text, embedding, created_at FROM facts ORDER BY created_at DESC LIMIT 200"
                 ).fetchall()
 
         if not rows:
             return []
 
         query_np = np.array(query_vec).astype("float32")
+        now = datetime.now()
 
         scored = []
         for row in rows:
+            # 语义相似度
             embedding = row["embedding"] if row["embedding"] else None
             if embedding:
                 try:
@@ -434,35 +450,64 @@ class LongTermMemory:
                     score = float(np.dot(query_np, vec_np) / (
                         np.linalg.norm(query_np) * np.linalg.norm(vec_np) + 1e-10
                     ))
-                    scored.append((score, row["fact_text"]))
                 except Exception:
-                    scored.append((0.0, row["fact_text"]))
+                    score = 0.0
             else:
-                scored.append((0.0, row["fact_text"]))
+                score = 0.0
+
+            # 时间衰减：每天降 1%，最低保留 50%
+            try:
+                created = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S")
+                days_old = (now - created).days
+                time_decay = max(0.5, 1.0 - days_old * 0.01)
+            except Exception:
+                time_decay = 1.0
+
+            scored.append((score * time_decay, row["fact_text"]))
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [text for _, text in scored[:top_k]]
 
     def _keyword_recall(self, query: str, top_k: int, category: Optional[str]) -> List[str]:
-        """关键词检索（SQLite LIKE）"""
+        """关键词检索（SQLite LIKE + 时间衰减）"""
+        from datetime import datetime
+        now = datetime.now()
+
         with self.db._conn() as conn:
             like = f"%{query}%"
+            # 多取一些，排序后再截断
+            limit = top_k * 5
             if category:
                 rows = conn.execute(
-                    """SELECT fact_text FROM facts
+                    """SELECT fact_text, confidence, created_at FROM facts
                        WHERE fact_text LIKE ? AND category = ?
                        ORDER BY confidence DESC, id DESC LIMIT ?""",
-                    (like, category, top_k),
+                    (like, category, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    """SELECT fact_text FROM facts
+                    """SELECT fact_text, confidence, created_at FROM facts
                        WHERE fact_text LIKE ?
                        ORDER BY confidence DESC, id DESC LIMIT ?""",
-                    (like, top_k),
+                    (like, limit),
                 ).fetchall()
 
-        return [r["fact_text"] for r in rows]
+        if not rows:
+            return []
+
+        scored = []
+        for row in rows:
+            try:
+                created = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S")
+                days_old = (now - created).days
+                time_decay = max(0.5, 1.0 - days_old * 0.01)
+            except Exception:
+                time_decay = 1.0
+            adjusted = row["confidence"] * time_decay
+            scored.append((adjusted, row["fact_text"]))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [text for _, text in scored[:top_k]]
 
     def update_embeddings(self) -> int:
         """为所有没有 embedding 的事实生成向量

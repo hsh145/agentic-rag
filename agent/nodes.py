@@ -132,6 +132,14 @@ def parse_intent(state: AgenticRAGState) -> Dict[str, Any]:
 
     return {
         "parsed_documents": [],
+        "agentic_trace": [{
+            "hop": 0,
+            "type": "parse_intent",
+            "need_file_parse": parsed.get("need_file_parse", False),
+            "need_rag_search": parsed.get("need_rag_search", True),
+            "query_type": parsed.get("query_type", "deep_search"),
+            "analysis": parsed.get("analysis", ""),
+        }],
         "messages": [
             HumanMessage(content=query),
             AIMessage(content=f"[意图分析] {parsed.get('analysis', '')}"),
@@ -192,6 +200,12 @@ def plan_retrieval(state: AgenticRAGState) -> Dict[str, Any]:
 
     return {
         "retrieval_plan": sub_queries if sub_queries else [query],
+        "agentic_trace": [{
+            "hop": 0,
+            "type": "plan_retrieval",
+            "sub_queries": sub_queries if sub_queries else [query],
+            "reasoning": parsed.get("reasoning", "") if parsed else "",
+        }],
         "messages": [AIMessage(content=f"[检索规划] {len(sub_queries)} 个子查询")],
     }
 
@@ -211,10 +225,7 @@ def execute_search(state: AgenticRAGState) -> Dict[str, Any]:
     config = DEFAULT_CONFIG
     query = state["query"]
     # 合并常规检索计划和反射补搜的新查询
-    plan = list(state.get("retrieval_plan", [query]))
-    supplementary = state.get("supplementary_queries", [])
-    if supplementary:
-        plan.extend(supplementary)
+    plan = list(dict.fromkeys(state.get("retrieval_plan", [query]) + state.get("supplementary_queries", [])))
     docs_data = state.get("parsed_documents", [])
 
     embedder = EmbeddingManager(config.embedding_model)
@@ -262,6 +273,21 @@ def execute_search(state: AgenticRAGState) -> Dict[str, Any]:
 
     return {
         "retrieved_chunks": all_results,
+        "executed_queries": list(dict.fromkeys(state.get("executed_queries", []) + plan)),
+        "agentic_trace": [{
+            "hop": state.get("iteration", 0) + 1,
+            "type": "execute_search",
+            "queries": plan,
+            "chunk_count": len(all_results),
+            "top_chunks": [
+                {
+                    "content_snippet": r["content"][:200],
+                    "score": r["score"],
+                    "source": r["metadata"].get("source", "unknown"),
+                }
+                for r in all_results[:5]  # 前5个详情的快照
+            ],
+        }],
         "messages": [AIMessage(content=f"[检索] 共 {len(all_results)} 个结果")],
     }
 
@@ -339,6 +365,17 @@ def evaluate_evidence(state: AgenticRAGState) -> Dict[str, Any]:
         "needs_more": needs_more,
         "missing_gaps": parsed.get("missing_gaps", []),
         "iteration": iteration + 1,
+        "agentic_trace": [{
+            "hop": iteration + 1,
+            "type": "evaluate_evidence",
+            "chunk_count": chunk_count,
+            "total_chars": total_chars,
+            "can_answer": parsed.get("can_answer", False),
+            "confidence": parsed.get("confidence", 0.5),
+            "feedback": parsed.get("feedback", ""),
+            "missing_gaps": parsed.get("missing_gaps", []),
+            "needs_more": needs_more,
+        }],
     }
 
 
@@ -417,6 +454,13 @@ def reflect_search(state: AgenticRAGState) -> Dict[str, Any]:
         "supplementary_queries": filtered if filtered else [],
         "executed_queries": all_executed,
         "retrieval_plan": filtered if filtered else state.get("retrieval_plan", [query]),
+        "agentic_trace": [{
+            "hop": state.get("iteration", 0),
+            "type": "reflect_search",
+            "missing_gaps": missing_gaps,
+            "generated_queries": filtered,
+            "supplement_count": len(filtered),
+        }],
         "messages": [AIMessage(content=f"[反射补搜] 针对 {len(missing_gaps)} 个缺口生成 {len(filtered)} 个新查询")],
     }
 
@@ -497,6 +541,7 @@ def generate_answer(state: AgenticRAGState) -> Dict[str, Any]:
 - 如果包含表格数据，用表格形式呈现
 - 如果包含图片描述，在回答中提及
 - 注意结合对话历史，避免重复之前已完整回答过的内容
+- 如果历史记忆与当前参考信息矛盾，以当前参考信息为准
 - 在回答末尾列出参考来源"""
 
     response = llm.invoke([HumanMessage(content=prompt)])
@@ -505,6 +550,13 @@ def generate_answer(state: AgenticRAGState) -> Dict[str, Any]:
         "final_answer": response.content,
         "sources": sources,
         "completed": True,
+        "agentic_trace": [{
+            "hop": state.get("iteration", 0),
+            "type": "generate_answer",
+            "chunks_used": len(chunks),
+            "sources": sources,
+            "answer_snippet": response.content[:300],
+        }],
         "messages": [AIMessage(content=response.content)],
     }
 

@@ -103,6 +103,17 @@ class QueryResponse(BaseModel):
     error: str = ""
 
 
+class TraceResponse(QueryResponse):
+    """支持溯源追踪的响应 — 包含逐跳轨迹和完整 chunk 数据"""
+    agentic_trace: list = Field(default_factory=list)
+    retrieved_chunks: list = Field(default_factory=list)
+    evidence_scores: dict = Field(default_factory=dict)
+    evidence_feedback: str = ""
+    missing_gaps: list = Field(default_factory=list)
+    retrieval_plan: list = Field(default_factory=list)
+    supplementary_queries: list = Field(default_factory=list)
+
+
 # ============================================================
 # FastAPI 应用
 # ============================================================
@@ -188,6 +199,7 @@ def root():
         "docs": "/docs",
         "endpoints": {
             "POST /api/ask": "提问（含记忆支持）",
+            "POST /api/ask/trace": "溯源问答（含完整分块可视化数据）",
             "GET  /api/health": "健康检查",
             "GET  /api/memory/stats": "记忆统计",
             "DELETE /api/memory/{session_id}": "清除指定会话记忆",
@@ -340,6 +352,131 @@ async def ask(request: QueryRequest, http_request: Request = None):
         tb = traceback.format_exc()
         logger.error(f"[{session_id}] 处理请求出错: {e}\n{tb}")
         return QueryResponse(success=False, error=str(e), session_id=session_id, elapsed_ms=round(elapsed, 1))
+
+
+@app.post("/api/ask/trace", response_model=TraceResponse)
+async def ask_trace(request: QueryRequest, http_request: Request = None):
+    """处理用户问题并返回完整溯源追踪数据（含逐跳轨迹 + chunk 详情）
+
+    与 /api/ask 的区别：
+    - 返回完整的 agentic_trace（包含意图分析→检索→评估→补搜→生成的每步记录）
+    - 返回所有 retrieved_chunks 及其分数、来源
+    - 返回 evidence_scores / missing_gaps 等决策信息
+    适合溯源问答、分块可视化观测场景。
+    """
+    session_id = request.session_id.strip() or f"trace_{uuid_mod.uuid4().hex[:12]}"
+    t_start = time.time()
+
+    try:
+        logger.info(f"[TRACE:{session_id}] query={request.query[:50]}...")
+
+        # ==== 记忆加载 ====
+        history = agent_memory.load_history(session_id, limit=6)
+        long_term_memories = agent_memory.recall_facts(request.query, top_k=3)
+
+        from langchain_community.chat_models import ChatTongyi
+        _base_url = os.environ.get("DASHSCOPE_BASE_URL", "")
+        _llm_kwargs = dict(
+            model="qwen-turbo", temperature=0.1,
+            dashscope_api_key=os.environ.get("DASHSCOPE_API_KEY", ""),
+        )
+        if _base_url:
+            _llm_kwargs["dashscope_api_base"] = _base_url
+        fact_llm = ChatTongyi(**_llm_kwargs)
+
+        # ==== 运行 Agent ====
+        result = await run_agent(
+            query=request.query,
+            file_paths=request.file_paths or [],
+            config=DEFAULT_CONFIG,
+            session_id=session_id,
+            checkpointer=agent_memory.get_checkpointer(),
+            history=history,
+            long_term_memories=long_term_memories,
+            max_iterations=request.max_iterations,
+        )
+
+        if result.get("error"):
+            elapsed = (time.time() - t_start) * 1000
+            return TraceResponse(
+                success=False,
+                error=result["error"],
+                session_id=session_id,
+                elapsed_ms=round(elapsed, 1),
+            )
+
+        answer = result.get("final_answer", "")
+
+        # ==== 保存记忆 ====
+        agent_memory.save_turn(
+            session_id=session_id,
+            query=request.query,
+            answer=answer,
+            sources=result.get("sources", []),
+        )
+        stored = agent_memory.extract_and_store(
+            session_id=session_id,
+            query=request.query,
+            answer=answer,
+            llm=fact_llm,
+        )
+
+        elapsed = (time.time() - t_start) * 1000
+
+        # 构建用于可视化的结构化 trace
+        trace = result.get("agentic_trace", [])
+
+        # 给每条 trace 补上 readable 的 stage_name
+        stage_names = {
+            "parse_intent": "意图分析",
+            "plan_retrieval": "检索规划",
+            "execute_search": "执行检索",
+            "evaluate_evidence": "证据评估",
+            "reflect_search": "反射补搜",
+            "generate_answer": "生成回答",
+        }
+        for entry in trace:
+            entry["stage_label"] = stage_names.get(entry.get("type", ""), entry.get("type", ""))
+
+        # 精简 chunk 数据（只保留可视化所需字段）
+        chunks_trimmed = []
+        for c in result.get("retrieved_chunks", []):
+            chunks_trimmed.append({
+                "content_snippet": c.get("content", "")[:300],
+                "score": c.get("score", 0),
+                "source": c.get("metadata", {}).get("source", "unknown"),
+                "source_type": c.get("metadata", {}).get("source_type", "text"),
+            })
+
+        return TraceResponse(
+            success=True,
+            answer=answer,
+            sources=result.get("sources", []),
+            iterations=result.get("iteration", 0),
+            chunk_count=len(result.get("retrieved_chunks", [])),
+            session_id=session_id,
+            memory_stats={
+                "history_len": len(history) // 2,
+                "facts_recalled": len(long_term_memories),
+                "facts_stored": stored,
+            },
+            elapsed_ms=round(elapsed, 1),
+            # === 溯源追踪数据 ===
+            agentic_trace=trace,
+            retrieved_chunks=chunks_trimmed,
+            evidence_scores=result.get("evidence_scores", {}),
+            evidence_feedback=result.get("evidence_feedback", ""),
+            missing_gaps=result.get("missing_gaps", []),
+            retrieval_plan=result.get("retrieval_plan", []),
+            supplementary_queries=result.get("supplementary_queries", []),
+        )
+
+    except Exception as e:
+        elapsed = (time.time() - t_start) * 1000
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"[TRACE:{session_id}] 出错: {e}\n{tb}")
+        return TraceResponse(success=False, error=str(e), session_id=session_id, elapsed_ms=round(elapsed, 1))
 
 
 if __name__ == "__main__":

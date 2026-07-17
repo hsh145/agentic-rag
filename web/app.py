@@ -376,6 +376,12 @@ if prompt := st.chat_input("请输入你的问题..."):
         else:
             error_msg = result.get("error", "未知错误")
             msg_placeholder.error(f"❌ {error_msg}")
+
+            # 即使失败也保存 session_id，让重试可以恢复已完成的检索
+            if result.get("session_id"):
+                st.session_state.session_id = result["session_id"]
+                st.session_state.current_session = result["session_id"][:20] + "..."
+
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": f"❌ 出错了: {error_msg}",

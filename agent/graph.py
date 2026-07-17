@@ -92,7 +92,7 @@ async def run_agent(
     long_term_memories: Optional[list] = None,
     max_iterations: Optional[int] = None,
 ):
-    """便捷调用入口（含记忆支持）
+    """便捷调用入口（含记忆支持 + 自动恢复）
 
     Args:
         query: 用户问题
@@ -106,8 +106,31 @@ async def run_agent(
 
     Returns:
         AgenticRAGState 最终状态
+
+    自动恢复:
+        如果同一个 session_id 有未完成的 checkpoint（上次请求在某个节点崩溃/超时），
+        自动从断点处恢复执行，不重复已经完成的计算。
     """
     app = build_agent(checkpointer)
+    thread_config = {"configurable": {"thread_id": session_id}}
+
+    # ================================================================
+    # 第一步：尝试恢复未完成的会话
+    # ================================================================
+    if checkpointer:
+        try:
+            snapshot = await app.aget_state(thread_config)
+            if snapshot is not None and snapshot.next:
+                pending = ", ".join(snapshot.next)
+                logger.info(f"[{session_id}] 恢复未完成的会话 → 从节点 [{pending}] 继续")
+                result = await app.ainvoke(None, config=thread_config)
+                return result
+        except Exception as e:
+            logger.info(f"[{session_id}] 无可用 checkpoint，从头开始: {e}")
+
+    # ================================================================
+    # 第二步：无 checkpoint → 创建全新的初始状态
+    # ================================================================
     initial = create_initial_state(
         query=query,
         file_paths=file_paths,
@@ -120,9 +143,5 @@ async def run_agent(
     elif config:
         initial["max_iterations"] = getattr(config, "max_iterations", 2)
 
-    run_kwargs = {"input": initial}
-    if checkpointer:
-        run_kwargs["config"] = {"configurable": {"thread_id": session_id}}
-
-    result = await app.ainvoke(**run_kwargs)
+    result = await app.ainvoke(input=initial, config=thread_config)
     return result
