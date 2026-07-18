@@ -1,22 +1,30 @@
 """
-混合检索 - 向量 + BM25 + RRF 融合
+混合检索 - 向量 + BM25 + RRF 融合 + 可选 Reranker
 """
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 
 from .indexer import IndexManager
+from .reranker import Reranker
 
 logger = logging.getLogger("rag.retriever")
 
 
 class HybridRetriever:
-    def __init__(self, index_mgr: IndexManager, chunks: List[Document], rrf_k: int = 60):
+    def __init__(
+        self,
+        index_mgr: IndexManager,
+        chunks: List[Document],
+        rrf_k: int = 60,
+        reranker: Optional[Reranker] = None,
+    ):
         self.index_mgr = index_mgr
         self.chunks = chunks
         self.rrf_k = rrf_k
+        self.reranker = reranker
         self.bm25_retriever = None
         if chunks:
             self.bm25_retriever = BM25Retriever.from_documents(chunks, k=5)
@@ -41,7 +49,14 @@ class HybridRetriever:
         if not bm25_docs:
             return vector_docs[:top_k]
 
-        return self._rrf_rerank(vector_docs, bm25_docs)[:top_k]
+        # RRF 融合
+        fused = self._rrf_rerank(vector_docs, bm25_docs)
+
+        # 可选：交叉编码器精排
+        if self.reranker and self.reranker.enabled:
+            fused = self.reranker.rerank(query, fused)
+
+        return fused[:top_k]
 
     def metadata_filtered_search(
         self, query: str, filters: Dict[str, Any], top_k: int = 5

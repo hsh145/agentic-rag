@@ -58,6 +58,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+import json
 
 from agent.graph import build_agent, run_agent
 from agent.state import create_initial_state
@@ -203,6 +204,8 @@ def root():
             "GET  /api/health": "健康检查",
             "GET  /api/memory/stats": "记忆统计",
             "DELETE /api/memory/{session_id}": "清除指定会话记忆",
+            "POST /api/feedback": "提交反馈（好评/差评/错误类型）",
+            "GET  /api/feedback": "查询历史反馈",
         },
     }
 
@@ -258,6 +261,53 @@ def clear_memory(session_id: str):
     """清除指定会话的记忆"""
     agent_memory.clear_session(session_id)
     return {"success": True, "message": f"会话 {session_id} 的记忆已清除"}
+
+
+# ============================================================
+# 反馈收集（文件存储，用于产品闭环）
+# ============================================================
+_FEEDBACK_FILE = Path(__file__).parent / "data" / "feedback.jsonl"
+
+
+class FeedbackEntry(BaseModel):
+    session_id: str = ""
+    question: str = ""
+    answer_snippet: str = ""
+    rating: int = Field(default=0, ge=-1, le=1)  # -1 差评, 0 未评, 1 好评
+    error_type: str = ""  # hallucination|missing_info|wrong|other|""
+    notes: str = ""
+    source: str = ""  # 来自哪个页面/功能
+
+
+@app.post("/api/feedback")
+async def submit_feedback(fb: FeedbackEntry):
+    """提交反馈"""
+    try:
+        _FEEDBACK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        record = fb.model_dump()
+        record["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(_FEEDBACK_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        logger.info(f"反馈已记录: rating={fb.rating}")
+        return {"success": True}
+    except Exception as e:
+        logger.warning(f"反馈记录失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/feedback")
+async def get_feedback(limit: int = 50):
+    """查询历史反馈"""
+    if not _FEEDBACK_FILE.exists():
+        return {"success": True, "data": []}
+    records = []
+    with open(_FEEDBACK_FILE, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    records.reverse()
+    return {"success": True, "data": records[:limit]}
 
 
 @app.post("/api/ask", response_model=QueryResponse)

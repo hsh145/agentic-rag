@@ -1,0 +1,338 @@
+{
+  "generated_at": "2026-07-17 16:24:13",
+  "summary": {
+    "total": 15,
+    "passed": 4,
+    "pass_rate": 0.26666666666666666,
+    "avg_doc_recall": 0.0,
+    "avg_chunk_recall": 0.0,
+    "avg_must_contain_recall": 0.9167,
+    "refusal_accuracy": 1.0,
+    "premise_correction_rate": 0.5,
+    "clarification_rate": 1.0
+  },
+  "per_category": {
+    "factual": {
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 3
+    },
+    "method": {
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 2
+    },
+    "comparison": {
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 2
+    },
+    "summary": {
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 2
+    },
+    "ambiguous": {
+      "pass_rate": 1.0,
+      "passed": 2,
+      "total": 2
+    },
+    "no_evidence": {
+      "pass_rate": 1.0,
+      "passed": 2,
+      "total": 2
+    },
+    "false_premise": {
+      "pass_rate": 0.0,
+      "passed": 0,
+      "total": 2
+    }
+  },
+  "results": [
+    {
+      "id": "GS-FACT-001",
+      "category": "factual",
+      "difficulty": "easy",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "什么是SFT微调？",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，没有直接提到关于SFT微调的具体内容。因此，基于当前的信息，我无法准确地解释什么是SFT微调。这里可能指的是特定领域的技术术语或者是某种软件、模型训练方法的缩写，但具体含义在给定材料中未得到明确说明。\n\n为了能够更准确地回答您的问题，需要更多关于SFT微调背景或者上下文的信息。如果您能提供更多细节（比如它是与哪个领域相关联的），或许我可以帮助找到更确切的答案。\n\n**参考来源："
+    },
+    {
+      "id": "GS-FACT-002",
+      "category": "factual",
+      "difficulty": "easy",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "LoRA的全称是什么？",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，未能找到关于LoRA全称的具体说明。因此，基于现有资料，我无法直接回答LoRA的全称是什么。\n\n为了能够准确回答您的问题，可能需要额外查找专门针对LoRA技术或相关领域的资料。如果LoRA是某个特定领域内的术语或者是某种技术、方法等，请提供更多背景信息，这样或许有助于找到更准确的答案。\n\n参考来源：\n- 本回复中提及的所有信息均基于您所提供的文档内容，但遗憾的是这些内容没有涉及"
+    },
+    {
+      "id": "GS-FACT-003",
+      "category": "factual",
+      "difficulty": "easy",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "SFT微调中learning rate的推荐范围是多少？",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的参考信息，没有直接提到关于SFT微调中learning rate推荐范围的具体内容。SFT可能是特定领域的技术术语或某种软件、模型训练方法的缩写，但当前给出的信息不足以确定其具体含义及相关的最佳实践建议，包括learning rate的最佳设置范围。\n\n为了能够更准确地回答您的问题，我需要更多关于SFT微调的具体背景信息或者该术语在哪个领域内的应用情况。如果您可以提供更多细节，比如SF"
+    },
+    {
+      "id": "GS-METHOD-001",
+      "category": "method",
+      "difficulty": "medium",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "LoRA是如何减少显存占用的？",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，没有直接提及LoRA技术以及它是如何减少显存占用的具体机制。因此，基于当前给出的信息，我无法准确回答您的问题关于LoRA是如何减少显存占用的。\n\n为了能够更好地解答您的疑问，我们需要更多关于LoRA（Low-Rank Adaptation）的技术细节，特别是它在模型训练或推理过程中采取了哪些措施来优化显存使用效率。如果您可以提供更多相关信息或者具体背景资料的话，我将能够提供更准"
+    },
+    {
+      "id": "GS-METHOD-002",
+      "category": "method",
+      "difficulty": "medium",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.3333333333333333,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "Agentic RAG的混合检索是怎么工作的？",
+      "errors": [
+        "关键词覆盖率不足 (33%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的检索信息，目前没有直接涉及到Agentic RAG（代理增强生成）的混合检索机制的具体描述。这意味着我们缺乏关于Agentic RAG如何执行混合检索的确切细节，包括但不限于它采用的技术、算法或方法等。\n\n从给定的信息来看，主要集中在不同企业如何应用AI技术来改进其产品和服务上，并没有提及与Agentic RAG相关的任何内容。例如，提到了万兴科技旗下产品的AI能力升级、华为Harmo"
+    },
+    {
+      "id": "GS-COMP-001",
+      "category": "comparison",
+      "difficulty": "hard",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "LoRA和Full Fine-tuning在显存占用上有什么区别？",
+      "errors": [
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的参考信息，这些资料主要涉及了AI服务器、经济数据、金融政策以及一些硬件设备的信息，并没有直接提及LoRA（Low-Rank Adaptation）与Full Fine-tuning在显存占用上的区别。因此，基于当前给出的材料，我无法准确回答您的问题。\n\n为了正确回答这个问题，我们需要了解关于这两种模型调整方法的具体技术细节，特别是它们如何影响模型训练过程中的显存使用情况。LoRA是一种"
+    },
+    {
+      "id": "GS-COMP-002",
+      "category": "comparison",
+      "difficulty": "hard",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "对比SFT微调和LoRA两种方法在可训练参数量上的差异",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的参考信息，没有直接提到SFT（全量微调）和LoRA（低秩适应）两种方法在可训练参数量上的具体差异。不过，基于我们之前讨论的内容以及对这两种技术的基本理解，可以总结如下：\n\n- **SFT（全量微调）**：这种方法涉及到调整预训练模型中的所有权重，以使其更好地适应特定任务或领域。因此，采用SFT时，模型中几乎所有的参数都是可训练的，这通常意味着需要大量的计算资源和较长的时间来完成训练过程"
+    },
+    {
+      "id": "GS-SUMM-001",
+      "category": "summary",
+      "difficulty": "hard",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "请总结Agentic RAG系统的核心功能和评估指标",
+      "errors": [
+        "关键词覆盖率不足 (0%)",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的参考信息，这些资料主要讨论了AI服务器的发展、人脸识别系统的准确性问题以及金融支持民营企业的政策等内容，并没有直接涉及Agentic RAG系统的核心功能和评估指标。因此，基于现有材料，我无法准确回答关于Agentic RAG系统的问题。\n\n- **核心功能**：资料中未提供有关Agentic RAG系统具体功能的信息。\n- **评估指标**：同样地，对于如何评估Agentic RAG"
+    },
+    {
+      "id": "GS-SUMM-002",
+      "category": "summary",
+      "difficulty": "medium",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 0.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "请总结SFT微调的关键参数配置",
+      "errors": [
+        "('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))"
+      ],
+      "iterations": 0,
+      "answer_snippet": ""
+    },
+    {
+      "id": "GS-AMBIG-001",
+      "category": "ambiguous",
+      "difficulty": "easy",
+      "passed": true,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": true,
+      "question": "这个参数怎么配置？",
+      "errors": [],
+      "iterations": 3,
+      "answer_snippet": "您好！您提到的“这个参数怎么配置？”的问题，当前提供的参考信息中并没有具体涉及到任何特定参数及其配置方法。这些信息主要讨论了关于LoRA与SFT的技术对比、一款迷你主机的技术规格、金融支持民营企业的政策指导、以及数字创意软件的新功能等，并没有直接回答您的问题。\n\n为了能够更准确地帮助到您，请提供更多背景信息或明确指出是哪个系统或设备的具体哪个参数需要配置。这样我才能提供更加针对性的帮助。\n\n###"
+    },
+    {
+      "id": "GS-AMBIG-002",
+      "category": "ambiguous",
+      "difficulty": "easy",
+      "passed": true,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": true,
+      "question": "它的效果怎么样？",
+      "errors": [],
+      "iterations": 3,
+      "answer_snippet": "您好！看起来您问的是“它的效果怎么样？”但这里没有足够的信息来明确“它”具体指的是什么。您的问题可能涉及多个不同的主题，包括但不限于甲状腺癌的治疗方法、金融支持民营企业的政策效果等。为了能够更准确地回答您的问题，请提供更多的背景信息或明确指出您想了解的具体系统或设备的名称。\n\n如果“它”是指某种特定的技术（例如SFT与LoRA之间的对比）、医疗手段（如腔镜甲状腺手术的效果）还是其他领域的内容，请进"
+    },
+    {
+      "id": "GS-NOEV-001",
+      "category": "no_evidence",
+      "difficulty": "medium",
+      "passed": true,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": true,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "2025年诺贝尔物理学奖颁给了谁？",
+      "errors": [],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，没有找到关于2025年诺贝尔物理学奖得主的具体内容。实际上，这些资料主要讨论了不同国家在科学研究领域的表现、金融支持民营企业政策以及中国专利奖项的情况等，并未提及未来任何特定年份的诺贝尔奖获奖者信息。\n\n因此，基于现有材料，无法回答“2025年诺贝尔物理学奖颁给了谁？”这一问题。要获取此类最新或预测性信息，建议关注官方诺贝尔奖网站或其他权威科学新闻来源。\n\n**参考来源：**\n"
+    },
+    {
+      "id": "GS-NOEV-002",
+      "category": "no_evidence",
+      "difficulty": "medium",
+      "passed": true,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": true,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "Agentic RAG系统支持解析哪些图片格式？",
+      "errors": [],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，没有具体提到Agentic RAG系统支持解析哪些图片格式。因此，基于当前的信息量，我无法直接回答您的问题关于Agentic RAG系统支持的具体图片格式。\n\n如果您需要了解某个特定软件或工具（如万兴科技旗下的产品）支持的文件格式，建议查阅该产品的官方文档或联系其客服获取最准确的信息。\n\n参考来源：\n- 中国证券报·中证网\n- 证券时报e公司\n- 天极网IT新闻频道\n- 中国人"
+    },
+    {
+      "id": "GS-FALSE-001",
+      "category": "false_premise",
+      "difficulty": "hard",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": false,
+      "clarification_correct": false,
+      "question": "为什么LoRA的显存占用比Full Fine-tuning还高？",
+      "errors": [
+        "应纠正前提但未纠正",
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据提供的参考信息，没有直接提到关于LoRA（Low-Rank Adaptation）与Full Fine-tuning在显存占用上的对比细节。因此，基于现有资料，我无法给出一个确切的答案来解释为什么LoRA的显存占用会比Full Fine-tuning更高。这个问题可能涉及到具体的实现方法、模型架构差异以及优化技术等因素，但这些细节在给定的信息中并未被涵盖。\n\n为了更准确地回答您的问题，建议查阅"
+    },
+    {
+      "id": "GS-FALSE-002",
+      "category": "false_premise",
+      "difficulty": "hard",
+      "passed": false,
+      "doc_recall": 0.0,
+      "chunk_recall": 0.0,
+      "must_contain_recall": 1.0,
+      "must_not_contain_violation": false,
+      "refusal_correct": false,
+      "premise_correct": true,
+      "clarification_correct": false,
+      "question": "为什么FAISS比BM25更适合做关键词精确匹配？",
+      "errors": [
+        "未召回任何期望文档"
+      ],
+      "iterations": 3,
+      "answer_snippet": "根据您提供的参考信息，没有直接提到FAISS与BM25在关键词精确匹配上的比较，也没有具体解释为什么FAISS可能更适合这种任务。因此，基于现有资料，我无法直接回答您的问题。不过，我可以根据一般知识给您一些背景信息。\n\n- **FAISS**：是一个用于高效相似性搜索和聚类的库，特别擅长处理高维向量空间中的数据。它使用了多种索引技术来加速搜索过程，如倒排文件、乘积量化等方法。对于大规模的数据集来说"
+    }
+  ]
+}

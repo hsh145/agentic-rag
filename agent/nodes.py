@@ -4,7 +4,7 @@ LangGraph 节点定义 - 6 个节点实现 Agentic RAG 全流程
 import json
 import os
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.chat_models import ChatTongyi
@@ -88,6 +88,42 @@ def _get_llm_for_generate():
 
 def get_api_key() -> str:
     return os.environ.get("DASHSCOPE_API_KEY", "") or os.environ.get("MOONSHOT_API_KEY", "")
+
+
+def _rewrite_query(query: str, history: List[Dict], llm=None) -> str:
+    """指代消解 + query 补全：将带指代/省略的 query 改写为独立可检索的 query
+
+    例如：
+      history=["SFT 的 learning rate 是多少？", "推荐 2e-5"]
+      query="那 batch size 呢？"
+      → "SFT 微调中 batch size 的推荐值是多少？"
+    """
+    if not history:
+        return query
+
+    history_text = "\n".join(
+        f"{'用户' if m['role']=='user' else '助手'}: {m['content'][:200]}"
+        for m in history[-6:]
+    )
+
+    prompt = f"""你是对话指代消解专家。将用户的最新问题改写为可独立检索的查询。
+
+对话历史：
+{history_text}
+
+用户最新问题：{query}
+
+要求：
+- 如果问题包含指代（它、这个、那、其等）或省略，补全为完整查询
+- 如果问题可以独立理解，保持原样
+- 输出 JSON：{{"rewritten_query": "改写后的查询"}}"""
+
+    parsed = _call_llm_json(prompt)
+    rewritten = parsed.get("rewritten_query", "") if parsed else ""
+    if rewritten and rewritten != query:
+        logger.info(f"Query Rewrite: '{query[:50]}' → '{rewritten[:50]}'")
+        return rewritten
+    return query
 
 
 # ============================================================
@@ -179,7 +215,13 @@ def parse_files(state: AgenticRAGState) -> Dict[str, Any]:
 def plan_retrieval(state: AgenticRAGState) -> Dict[str, Any]:
     """制定检索计划：将复杂查询拆解为多个子查询"""
     query = state["query"]
+    history = state.get("history", [])
     docs = state.get("parsed_documents", [])
+
+    # ---- 第一轮：如果有历史，先做 query rewrite（指代消解）----
+    rewritten = _rewrite_query(query, history)
+    if rewritten and rewritten != query:
+        query = rewritten
 
     context_hint = f"（已解析 {len(docs)} 个文档）" if docs else ""
 
@@ -199,12 +241,14 @@ def plan_retrieval(state: AgenticRAGState) -> Dict[str, Any]:
     sub_queries = parsed.get("sub_queries", [query]) if parsed else [query]
 
     return {
+        "query": query,  # 覆盖为改写后的 query，后续节点使用
         "retrieval_plan": sub_queries if sub_queries else [query],
         "agentic_trace": [{
             "hop": 0,
             "type": "plan_retrieval",
             "sub_queries": sub_queries if sub_queries else [query],
             "reasoning": parsed.get("reasoning", "") if parsed else "",
+            "was_rewritten": rewritten != state["query"] if rewritten else False,
         }],
         "messages": [AIMessage(content=f"[检索规划] {len(sub_queries)} 个子查询")],
     }
@@ -218,6 +262,7 @@ def execute_search(state: AgenticRAGState) -> Dict[str, Any]:
     from rag.embedder import EmbeddingManager
     from rag.indexer import IndexManager
     from rag.retriever import HybridRetriever
+    from rag.reranker import Reranker
     from rag import get_chunker
     from langchain_core.documents import Document as LCDocument
     from config import DEFAULT_CONFIG
@@ -252,9 +297,15 @@ def execute_search(state: AgenticRAGState) -> Dict[str, Any]:
     elif not has_existing:
         return {"retrieved_chunks": [], "messages": [AIMessage(content="[检索] 无可用索引，请先添加文档")]}
 
-    # 构建混合检索器
+    # 构建混合检索器（可选 reranker）
     all_chunks = getattr(indexer, "documents", [])
-    retriever = HybridRetriever(indexer, all_chunks, rrf_k=config.rrf_k)
+    reranker = Reranker(
+        model_name=config.rerank_model,
+        enabled=config.enable_rerank,
+        top_k=config.rerank_top_k,
+        device=config.rerank_device,
+    )
+    retriever = HybridRetriever(indexer, all_chunks, rrf_k=config.rrf_k, reranker=reranker)
 
     # 执行所有子查询
     all_results = []
@@ -338,6 +389,11 @@ def evaluate_evidence(state: AgenticRAGState) -> Dict[str, Any]:
 {{
     "can_answer": true/false,        // 现有信息能否完整回答问题
     "missing_gaps": ["缺口1", "缺口2"], // 如果 can_answer=false，列出具体缺什么信息
+    "issue_type": "",                 // 如果 can_answer=false，判断原因：
+                                      //   "bad_query" — query 有指代/省略，需结合历史改写后再搜
+                                      //   "multi_hop" — 需要先找到某个实体再基于它跳转搜索
+                                      //   "insufficient" — 单纯信息量不够，需更多同类内容
+                                      //   如果 can_answer=true，留空
     "feedback": "评估摘要（100字内）",    // 简要说明信息充分/不足之处
     "confidence": 0.0-1.0             // 对回答质量的置信度
 }}"""
@@ -349,11 +405,15 @@ def evaluate_evidence(state: AgenticRAGState) -> Dict[str, Any]:
         parsed = {
             "can_answer": chunk_count >= 2 and total_chars >= 300,
             "missing_gaps": [],
+            "issue_type": "insufficient" if chunk_count < 2 else "",
             "feedback": f"检索到 {chunk_count} 块，共 {total_chars} 字（规则评估）",
             "confidence": 0.5,
         }
 
     needs_more = (not parsed["can_answer"]) and (iteration < max_iter)
+    issue_type = parsed.get("issue_type", "")
+    if issue_type not in ("bad_query", "multi_hop", "insufficient"):
+        issue_type = "insufficient" if needs_more else ""
 
     return {
         "evidence_scores": {
@@ -364,6 +424,7 @@ def evaluate_evidence(state: AgenticRAGState) -> Dict[str, Any]:
         "evidence_feedback": parsed.get("feedback", ""),
         "needs_more": needs_more,
         "missing_gaps": parsed.get("missing_gaps", []),
+        "issue_type": issue_type,
         "iteration": iteration + 1,
         "agentic_trace": [{
             "hop": iteration + 1,
@@ -383,28 +444,85 @@ def evaluate_evidence(state: AgenticRAGState) -> Dict[str, Any]:
 # 节点5b：反射补搜 (reflect_search)
 # ============================================================
 def reflect_search(state: AgenticRAGState) -> Dict[str, Any]:
-    """根据证据评估识别出的信息缺口，生成有针对性的新查询
+    """根据信息不足的原因，走三种不同的补搜路径
 
-    这是 DeepResearch2 的 reflect_node 的简化版。
-    不是简单地重新执行原查询，而是针对缺失信息生成更精确的查询。
+    bad_query:      query 有指代/省略 → 用历史改写 query，替换原计划
+    multi_hop:      需要基于已搜到的实体跳转搜索 → 生成实体感知的新查询
+    insufficient:   单纯信息量不够 → 生成针对缺口的补充查询（原逻辑）
     """
     query = state["query"]
     missing_gaps = state.get("missing_gaps", [])
     executed_queries = state.get("executed_queries", [])
     chunks = state.get("retrieved_chunks", [])
-
-    # 已执行过的查询
+    history = state.get("history", [])
+    issue_type = state.get("issue_type", "")
     all_executed = list(executed_queries)
 
-    if not missing_gaps:
-        # 没有具体缺口时，从已有 chunk 的内容反推需要补充的信息
-        chunk_topics = []
-        for c in chunks[:3]:
-            meta = c.get("metadata", {})
-            src = meta.get("source", "unknown")
-            chunk_topics.append(src)
+    # ================================================================
+    # 路径 A：query 有指代/省略 → 用历史改写，替换原计划
+    # ================================================================
+    if issue_type == "bad_query":
+        rewritten = _rewrite_query(query, history)
+        if rewritten and rewritten != query and rewritten not in all_executed:
+            logger.info(f"[bad_query] 改写 '{query[:40]}' → '{rewritten[:40]}'")
+            all_executed.append(rewritten)
+            return {
+                "query": rewritten,  # 覆盖 query，后续节点用改写后的
+                "retrieval_plan": [rewritten],
+                "supplementary_queries": [],
+                "executed_queries": all_executed,
+                "agentic_trace": [{
+                    "hop": state.get("iteration", 0),
+                    "type": "reflect_search",
+                    "issue_type": "bad_query",
+                    "original_query": query,
+                    "rewritten_query": rewritten,
+                    "generated_queries": [rewritten],
+                    "supplement_count": 1,
+                }],
+                "messages": [AIMessage(content=f"[反射补搜] bad_query: 改写为 '{rewritten[:50]}'")],
+            }
 
-        prompt = f"""你是检索规划专家。以下信息不足以回答用户问题，请生成新的搜索查询。
+    # ================================================================
+    # 路径 B：多跳查询 → 基于已有 chunk 提取新实体/方向
+    # ================================================================
+    if issue_type == "multi_hop":
+        chunk_snippets = "\n".join(
+            f"- {c.get('content','')[:200]}"
+            for c in chunks[:5]
+        )
+        prompt = f"""你是多跳查询专家。已检索到的内容提到了某些实体或线索，
+需要基于它们跳转搜索才能找到完整答案。
+
+用户问题：{query}
+
+已检索到的内容：
+{chunk_snippets}
+
+信息缺口：
+{'、'.join(missing_gaps) if missing_gaps else '无'}
+
+请分析已检索到的内容中提到了哪些需要进一步搜索的实体或方向，
+生成 1-2 个针对这些新实体的搜索查询。
+要求与已执行过的查询不同：{all_executed}
+
+输出 JSON：{{"supplementary_queries": ["查询1", "查询2"]}}"""
+        parsed = _call_llm_json(prompt)
+        new_queries = parsed.get("supplementary_queries", []) if parsed else []
+
+    # ================================================================
+    # 路径 C：单纯信息量不够（或 issue_type 为空/未知）
+    # ================================================================
+    else:
+        if not missing_gaps:
+            # 没有具体缺口，从已有 chunk 反推
+            chunk_topics = []
+            for c in chunks[:3]:
+                meta = c.get("metadata", {})
+                src = meta.get("source", "unknown")
+                chunk_topics.append(src)
+
+            prompt = f"""你是检索规划专家。以下信息不足以回答用户问题，请生成新的搜索查询。
 
 用户问题：{query}
 已检索的来源：{', '.join(chunk_topics)}
@@ -415,15 +533,9 @@ def reflect_search(state: AgenticRAGState) -> Dict[str, Any]:
 2. 针对原问题未被覆盖的方面
 
 输出 JSON：{{"supplementary_queries": ["查询1", "查询2"]}}"""
-
-        parsed = _call_llm_json(prompt)
-        new_queries = parsed.get("supplementary_queries", []) if parsed else []
-
-    else:
-        # 有具体缺口，生成针对性查询
-        gaps_text = "\n".join(f"- {g}" for g in missing_gaps)
-
-        prompt = f"""你是检索规划专家。用户问题缺少关键信息，请生成针对性的搜索查询来填补缺口。
+        else:
+            gaps_text = "\n".join(f"- {g}" for g in missing_gaps)
+            prompt = f"""你是检索规划专家。用户问题缺少关键信息，请生成针对性的搜索查询来填补缺口。
 
 用户问题：{query}
 
@@ -447,7 +559,7 @@ def reflect_search(state: AgenticRAGState) -> Dict[str, Any]:
     filtered = [q for q in new_queries if q not in all_executed]
 
     if filtered:
-        logger.info(f"反射补搜: {len(filtered)} 个新查询: {filtered}")
+        logger.info(f"{'[multi_hop]' if issue_type=='multi_hop' else '[insufficient]'} {len(filtered)} 个新查询: {filtered}")
         all_executed.extend(filtered)
 
     return {
@@ -457,11 +569,12 @@ def reflect_search(state: AgenticRAGState) -> Dict[str, Any]:
         "agentic_trace": [{
             "hop": state.get("iteration", 0),
             "type": "reflect_search",
+            "issue_type": issue_type or "insufficient",
             "missing_gaps": missing_gaps,
             "generated_queries": filtered,
             "supplement_count": len(filtered),
         }],
-        "messages": [AIMessage(content=f"[反射补搜] 针对 {len(missing_gaps)} 个缺口生成 {len(filtered)} 个新查询")],
+        "messages": [AIMessage(content=f"[反射补搜] ({issue_type or 'insufficient'}) 生成 {len(filtered)} 个新查询")],
     }
 
 

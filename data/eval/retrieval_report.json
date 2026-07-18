@@ -1,0 +1,358 @@
+{
+  "generated_at": "2026-07-17 15:43:46",
+  "config": {
+    "retrieval": "hybrid (FAISS + BM25 + RRF)",
+    "top_k_evaluated": 10,
+    "metrics": [
+      "Recall@k",
+      "Precision@k",
+      "MRR",
+      "nDCG@k"
+    ]
+  },
+  "summary": {
+    "total_qa": 618,
+    "evaluated": 18,
+    "avg_recall@3": 0.5344,
+    "avg_precision@3": 0.7222,
+    "avg_mrr": 0.9213
+  },
+  "difficulty_breakdown": {
+    "L1_factual": {
+      "count": 5,
+      "avg_recall@3": 0.4667,
+      "avg_mrr": 0.7167
+    },
+    "L2_comparison": {
+      "count": 5,
+      "avg_recall@3": 0.5524,
+      "avg_mrr": 1.0
+    },
+    "L3_reasoning": {
+      "count": 5,
+      "avg_recall@3": 0.6524,
+      "avg_mrr": 1.0
+    },
+    "L4_cross_doc": {
+      "count": 3,
+      "avg_recall@3": 0.4206,
+      "avg_mrr": 1.0
+    }
+  },
+  "results": [
+    {
+      "id": "L1-001",
+      "question": "什么是SFT微调？",
+      "difficulty": "L1_factual",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L1-002",
+      "question": "LoRA的全称是什么？",
+      "difficulty": "L1_factual",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.3333,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 0.6667,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 0.8182
+    },
+    {
+      "id": "L1-003",
+      "question": "FAISS是什么？",
+      "difficulty": "L1_factual",
+      "relevant_docs": [
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 1,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333,
+      "precision@5": 0.2,
+      "mrr": 0.3333,
+      "ndcg@3": 0.3333
+    },
+    {
+      "id": "L1-004",
+      "question": "SFT微调中learning rate的推荐范围是多少？",
+      "difficulty": "L1_factual",
+      "relevant_docs": [
+        "sample.json",
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L1-005",
+      "question": "什么是RLHF？",
+      "difficulty": "L1_factual",
+      "relevant_docs": [
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 1,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.2,
+      "mrr": 0.25,
+      "ndcg@3": 0.0
+    },
+    {
+      "id": "L2-001",
+      "question": "LoRA和Full Fine-tuning的主要区别是什么？",
+      "difficulty": "L2_comparison",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.3333,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 0.6667,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 0.8182
+    },
+    {
+      "id": "L2-002",
+      "question": "对比SFT和RLHF两种训练方法",
+      "difficulty": "L2_comparison",
+      "relevant_docs": [
+        "sample.md",
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 7,
+      "recall@1": 0.1429,
+      "recall@3": 0.4286,
+      "recall@5": 0.7143,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L2-003",
+      "question": "Batch size在SFT微调中的推荐范围是什么？太大会有什么问题？",
+      "difficulty": "L2_comparison",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L2-004",
+      "question": "Warmup ratio在训练中的作用是什么？",
+      "difficulty": "L2_comparison",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L2-005",
+      "question": "系统使用了几种检索方式？分别是什么？",
+      "difficulty": "L2_comparison",
+      "relevant_docs": [
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333,
+      "precision@5": 0.2,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L3-001",
+      "question": "为什么LoRA比Full Fine-tuning省显存？其原理是什么？",
+      "difficulty": "L3_reasoning",
+      "relevant_docs": [
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L3-002",
+      "question": "在模型微调中，为什么先做SFT再做RLHF？顺序可以调换吗？",
+      "difficulty": "L3_reasoning",
+      "relevant_docs": [
+        "sample.md",
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 7,
+      "recall@1": 0.1429,
+      "recall@3": 0.4286,
+      "recall@5": 0.7143,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L3-003",
+      "question": "Agentic RAG系统中的'条件边'是如何工作的？为什么需要它？",
+      "difficulty": "L3_reasoning",
+      "relevant_docs": [
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333,
+      "precision@5": 0.2,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L3-004",
+      "question": "LoRA的rank值和alpha值如何影响模型效果？",
+      "difficulty": "L3_reasoning",
+      "relevant_docs": [
+        "sample.json",
+        "sample.md"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.3333,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 0.6667,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 0.8182
+    },
+    {
+      "id": "L3-005",
+      "question": "为什么需要混合检索（向量+BM25）而不仅仅用向量检索？",
+      "difficulty": "L3_reasoning",
+      "relevant_docs": [
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333,
+      "precision@5": 0.2,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L4-001",
+      "question": "综合比较SFT、LoRA和RLHF三种技术的适用场景和资源需求",
+      "difficulty": "L4_cross_doc",
+      "relevant_docs": [
+        "sample.md",
+        "sample.json",
+        "sample.txt"
+      ],
+      "total_relevant_chunks": 7,
+      "recall@1": 0.1429,
+      "recall@3": 0.4286,
+      "recall@5": 0.7143,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    },
+    {
+      "id": "L4-002",
+      "question": "设计一个完整的LLM微调实验方案，包括参数配置、训练方法和评估指标",
+      "difficulty": "L4_cross_doc",
+      "relevant_docs": [
+        "sample.md",
+        "sample.json"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.3333,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 0.6667,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 0.7273
+    },
+    {
+      "id": "L4-003",
+      "question": "如果我有一个7B模型，只有24GB显存，如何设计最优的微调方案？",
+      "difficulty": "L4_cross_doc",
+      "relevant_docs": [
+        "sample.md",
+        "sample.json"
+      ],
+      "total_relevant_chunks": 6,
+      "recall@1": 0.1667,
+      "recall@3": 0.5,
+      "recall@5": 0.6667,
+      "precision@1": 1.0,
+      "precision@3": 1.0,
+      "precision@5": 0.8,
+      "mrr": 1.0,
+      "ndcg@3": 1.0
+    }
+  ]
+}

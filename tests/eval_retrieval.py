@@ -12,6 +12,7 @@
     - data/eval/retrieval_report.json（结构化结果）
 """
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -20,6 +21,21 @@ from typing import List, Dict, Any
 # 确保项目根目录在 sys.path 中
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
+
+# 加载 .env（main.py 在启动时做，eval 脚本需要手动加载）
+_env_file = ROOT / ".env"
+if _env_file.exists():
+    with open(_env_file, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line.startswith("DASHSCOPE_API_KEY="):
+                _val = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                if _val:
+                    os.environ["DASHSCOPE_API_KEY"] = _val
+            elif _line.startswith("MOONSHOT_API_KEY="):
+                _val = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                if _val:
+                    os.environ["MOONSHOT_API_KEY"] = _val
 
 
 # ============================================================

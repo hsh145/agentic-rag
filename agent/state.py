@@ -39,6 +39,7 @@ class AgenticRAGState(TypedDict):
     evidence_feedback: str                  # 评估反馈
     needs_more: bool                        # 是否需要补搜
     missing_gaps: List[str]                 # 具体的信息缺口（LLM识别）
+    issue_type: str                         # 信息不足的原因：bad_query|multi_hop|insufficient|""
     iteration: int                          # 当前迭代轮次
     max_iterations: int                     # 最大迭代轮次
 
@@ -81,6 +82,7 @@ def create_initial_state(
         "evidence_feedback": "",
         "needs_more": False,
         "missing_gaps": [],
+        "issue_type": "",
         "iteration": 0,
         "max_iterations": 2,
         "final_answer": "",

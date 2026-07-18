@@ -33,6 +33,12 @@ class AgenticRAGConfig:
     bm25_k: int = 5
     rrf_k: int = 60
 
+    # ========== Reranker 配置（可选，默认关闭）==========
+    enable_rerank: bool = False             # 是否启用交叉编码器重排
+    rerank_model: str = "BAAI/bge-reranker-v2-m3"  # 模型名称（或本地路径）
+    rerank_top_k: int = 10                  # 对前 N 个候选重排
+    rerank_device: str = "cpu"              # cpu 或 cuda
+
     # ========== Agent 配置 ==========
     max_iterations: int = 2
     enable_web_search: bool = False

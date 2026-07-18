@@ -248,6 +248,16 @@ C:/docs/论文.pdf
 
     st.divider()
 
+    # 导航
+    st.markdown("#### 🧭 导航")
+    st.page_link("app.py", label="💬 对话", icon="💬")
+    if st.button("🔍 溯源问答", use_container_width=True, help="查看逐跳检索轨迹"):
+        st.switch_page("pages/trace.py")
+    if st.button("⚙️ 工作台", use_container_width=True, help="知识构建 / 反馈 / Wiki"):
+        st.switch_page("pages/workbench.py")
+
+    st.divider()
+
     # 关于
     st.markdown("#### ℹ️ 关于")
     st.caption(
