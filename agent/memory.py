@@ -552,6 +552,54 @@ class LongTermMemory:
             row = conn.execute("SELECT COUNT(*) as cnt FROM facts").fetchone()
             return row["cnt"]
 
+    # --------------------------------------------------
+    # 遗忘机制
+    # --------------------------------------------------
+    def forget_old_facts(self, days: int = 30) -> int:
+        """删除超过指定天数的旧事实"""
+        from datetime import datetime, timedelta
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+        with self.db._conn() as conn:
+            result = conn.execute(
+                "DELETE FROM facts WHERE created_at < ?",
+                (cutoff,),
+            )
+            deleted = result.rowcount
+        if deleted:
+            logger.info(f"遗忘机制: 删除 {deleted} 条超过 {days} 天的旧事实")
+        return deleted
+
+    def forget_low_confidence(self, threshold: float = 0.3) -> int:
+        """删除置信度低于阈值的事实"""
+        with self.db._conn() as conn:
+            result = conn.execute(
+                "DELETE FROM facts WHERE confidence < ?",
+                (threshold,),
+            )
+            deleted = result.rowcount
+        if deleted:
+            logger.info(f"遗忘机制: 删除 {deleted} 条置信度低于 {threshold} 的事实")
+        return deleted
+
+    def forget_duplicates(self) -> int:
+        """同 entity+category 只保留最新的一条，删除旧版本"""
+        with self.db._conn() as conn:
+            # 找出每个 entity+category 分组中不是最新的记录
+            deleted = conn.execute("""
+                DELETE FROM facts WHERE id NOT IN (
+                    SELECT id FROM (
+                        SELECT id, ROW_NUMBER() OVER (
+                            PARTITION BY entity, category, session_id
+                            ORDER BY created_at DESC
+                        ) AS rn FROM facts
+                    ) WHERE rn = 1
+                )
+            """)
+            count = deleted.rowcount
+        if count:
+            logger.info(f"遗忘机制: 清理 {count} 条重复事实（同 entity+category 只留最新）")
+        return count
+
     def get_facts_by_session(self, session_id: str) -> List[FactRecord]:
         with self.db._conn() as conn:
             rows = conn.execute(
@@ -643,8 +691,17 @@ class AgentMemory:
     def update_embeddings(self) -> int:
         return self.long_term.update_embeddings()
 
+    # ---- 遗忘 ----
+    def forget_old_facts(self, days: int = 30) -> int:
+        return self.long_term.forget_old_facts(days)
+
+    def forget_low_confidence(self, threshold: float = 0.3) -> int:
+        return self.long_term.forget_low_confidence(threshold)
+
+    def forget_duplicates(self) -> int:
+        return self.long_term.forget_duplicates()
+
     # ---- 统计 ----
-    def stats(self) -> Dict:
         return {
             "session_count": self.session.get_session_count(),
             "fact_count": self.long_term.get_fact_count(),

@@ -263,6 +263,29 @@ def clear_memory(session_id: str):
     return {"success": True, "message": f"会话 {session_id} 的记忆已清除"}
 
 
+class ForgetRequest(BaseModel):
+    strategy: str = "old"  # old | low_confidence | duplicates
+    days: int = 30
+    threshold: float = 0.3
+
+
+@app.post("/api/memory/forget")
+def forget_memory(req: ForgetRequest):
+    """遗忘机制：按策略清理长期记忆"""
+    try:
+        if req.strategy == "old":
+            count = agent_memory.forget_old_facts(req.days)
+        elif req.strategy == "low_confidence":
+            count = agent_memory.forget_low_confidence(req.threshold)
+        elif req.strategy == "duplicates":
+            count = agent_memory.forget_duplicates()
+        else:
+            return {"success": False, "error": f"未知策略: {req.strategy}"}
+        return {"success": True, "deleted": count, "strategy": req.strategy}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ============================================================
 # 反馈收集（文件存储，用于产品闭环）
 # ============================================================

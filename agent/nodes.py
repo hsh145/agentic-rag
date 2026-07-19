@@ -126,6 +126,41 @@ def _rewrite_query(query: str, history: List[Dict], llm=None) -> str:
     return query
 
 
+def _mqe_expand(query: str, n: int = 3) -> List[str]:
+    """多查询扩展（MQE）：将一条 query 扩展为 n 个语义等价的不同表述
+
+    多个表述同时检索再合并，提高召回率。
+    例如：
+      "SFT learning rate 推荐值"
+      → ["SFT learning rate 推荐值",
+         "监督式微调的学习率如何设置",
+         "SFT 训练时 learning_rate 参数最佳实践"]
+    """
+    prompt = f"""你是检索查询扩展专家。给定原始查询，生成 {n} 个语义等价但表述不同的搜索查询。
+
+原始查询：{query}
+
+要求：
+- 每个查询必须语义等价（不能改变原意）
+- 使用不同的表述方式，覆盖同义词、换序、详略等
+- 直接输出 JSON，不要多余文字
+
+输出 JSON：{{"expanded_queries": ["变体1", "变体2", "变体3"]}}"""
+
+    parsed = _call_llm_json(prompt)
+    expanded = parsed.get("expanded_queries", []) if parsed else []
+    # 去重 + 包含原始 query
+    seen = {query}
+    result = [query]
+    for q in expanded:
+        q = q.strip()
+        if q and q not in seen:
+            seen.add(q)
+            result.append(q)
+    # 限制数量
+    return result[:n]
+
+
 # ============================================================
 # 节点1：意图分析 (parse_intent)
 # ============================================================
@@ -306,6 +341,15 @@ def execute_search(state: AgenticRAGState) -> Dict[str, Any]:
         device=config.rerank_device,
     )
     retriever = HybridRetriever(indexer, all_chunks, rrf_k=config.rrf_k, reranker=reranker)
+
+    # MQE 多查询扩展：每个子查询扩展为多个变体，提高召回率
+    if config.enable_mqe and not state.get("supplementary_queries"):
+        mqe_q = config.mqe_expansions or 3
+        expanded_plan = []
+        for sub_q in plan:
+            expanded_plan.extend(_mqe_expand(sub_q, mqe_q))
+        plan = list(dict.fromkeys(expanded_plan))
+        logger.info(f"MQE 扩展: {len(plan)} 个变体查询")
 
     # 执行所有子查询
     all_results = []

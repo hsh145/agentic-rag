@@ -43,6 +43,10 @@ class AgenticRAGConfig:
     max_iterations: int = 2
     enable_web_search: bool = False
 
+    # ========== MQE 多查询扩展（可选，默认关闭）==========
+    enable_mqe: bool = False             # 是否启用多查询扩展
+    mqe_expansions: int = 3              # 每个子查询扩展为几个变体
+
     # ========== 生成配置 ==========
     temperature: float = 0.1
     max_tokens: int = 4096
