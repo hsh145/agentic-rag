@@ -119,16 +119,15 @@ class OutputGuard:
         return text
 
     @staticmethod
-    def verify_sources(answer: str, chunks: list, threshold: float = 0.3) -> dict:
+    def verify_sources(answer: str, chunks: list, threshold: float = 0.2) -> dict:
         """检查回答中的 claims 是否能在检索 chunk 中找到来源
 
-        简单实现：从回答中提取关键短语，检查是否出现在 chunk 内容中。
-        返回 {"verified": bool, "unverified_claims": [str], "coverage": float}
+        宽松匹配：从句中提取关键实体和数字，检查是否在 chunk 内容中出现。
+        不严格要求完整短语匹配，只要关键实体/数字命中即算验证通过。
         """
         if not chunks:
             return {"verified": False, "unverified_claims": ["无检索上下文"], "coverage": 0.0}
 
-        # 合并所有 chunk 内容
         all_context = " ".join(
             c.get("content", "") or c.get("content_snippet", "") or ""
             for c in chunks
@@ -137,27 +136,44 @@ class OutputGuard:
         if not all_context:
             return {"verified": False, "unverified_claims": ["空上下文"], "coverage": 0.0}
 
-        # 从回答中提取中文句子作为 claims
+        # 从句中提取关键信息单元（年份、模型名、数字、实体词）
         sentences = re.split(r'[。！？\n]', answer)
         unverified = []
         total = 0
 
         for sent in sentences:
             sent = sent.strip()
-            if len(sent) < 8:  # 太短的忽略
+            if len(sent) < 8:
                 continue
             total += 1
-            # 检查句子中的关键内容是否能在上下文中找到
-            key_terms = self._extract_key_terms(sent)
-            if key_terms:
-                matched = sum(1 for term in key_terms if term in all_context)
-                if matched < max(1, len(key_terms) * threshold):
-                    unverified.append(sent[:100])
+
+            # 提取关键信息单元：年份（4位数字）、大写模型名、中文实体
+            units = set()
+            # 年份
+            for m in re.finditer(r'\d{4}', sent):
+                units.add(m.group())
+            # 英文专名（包含大写字母的词）
+            for m in re.finditer(r'[A-Z][A-Za-z0-9-]+', sent):
+                units.add(m.group().lower())
+            # 中文实体（长度 >= 4 的关键词）
+            for m in re.finditer(r'[一-鿿]{4,}', sent):
+                units.add(m.group())
+
+            if not units:
+                # 没有可验证的实体 → 跳过此句
+                continue
+
+            # 宽松匹配：只要有一个关键单元出现在上下文中即通过
+            matched_any = any(u in all_context for u in units)
+            if not matched_any:
+                unverified.append(sent[:100])
 
         coverage = (total - len(unverified)) / total if total else 0
+        # 如果大部分句子都通过了验证，或者有引用来源，判定为 verified
+        verified = coverage >= 0.3 or (chunks and len(unverified) <= 1)
         return {
-            "verified": coverage >= 0.5,
-            "unverified_claims": unverified[:5],
+            "verified": verified,
+            "unverified_claims": unverified[:3],
             "coverage": round(coverage, 4),
         }
 

@@ -4,6 +4,7 @@ Agentic RAG — 溯源问答 & 分块可视化观测页
 import time
 import requests
 import streamlit as st
+import pandas as pd
 from pathlib import Path
 from collections import Counter
 
@@ -296,44 +297,52 @@ def render_chunk_analysis(chunks: list):
         st.info("无检索结果")
         return
 
-    col1, col2 = st.columns(2)
+    import altair as alt
 
-    with col1:
+    # 分块得分分布（左）
+    scores = [c.get("score", 0) for c in chunks]
+    if scores:
         st.markdown("#### 📊 分块得分分布")
-        scores = [c.get("score", 0) for c in chunks]
-        if scores:
-            chart_data = {"Chunk": list(range(1, len(scores) + 1)), "RRF Score": scores}
-            st.bar_chart(chart_data, x="Chunk", y="RRF Score", height=200)
+        score_df = {"块序号": [str(i+1) for i in range(len(scores))], "RRF 分数": scores}
+        score_chart = alt.Chart(pd.DataFrame(score_df)).mark_bar().encode(
+            x=alt.X("块序号:N", axis=alt.Axis(labelAngle=0, labelLimit=60), sort=None),
+            y=alt.Y("RRF 分数:Q"),
+        ).properties(height=250, width=400)
+        st.altair_chart(score_chart, use_container_width=True)
 
-            # 统计区间
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                hi = sum(1 for s in scores if s > 0.15)
-                st.metric("高置信度 (>0.15)", hi)
-            with col_b:
-                mid = sum(1 for s in scores if 0.05 <= s <= 0.15)
-                st.metric("中等置信度", mid)
-            with col_c:
-                lo = sum(1 for s in scores if s < 0.05)
-                st.metric("低置信度", lo)
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            hi = sum(1 for s in scores if s > 0.15)
+            st.metric("高置信度", hi)
+        with col_b:
+            mid = sum(1 for s in scores if 0.05 <= s <= 0.15)
+            st.metric("中等置信度", mid)
+        with col_c:
+            lo = sum(1 for s in scores if s < 0.05)
+            st.metric("低置信度", lo)
 
-    with col2:
+    st.divider()
+
+    # 来源文件分布（右）
+    sources = [Path(c.get("source", "unknown")).name for c in chunks]
+    if sources:
         st.markdown("#### 📁 来源文件分布")
-        sources = [Path(c.get("source", "unknown")).name for c in chunks]
-        if sources:
-            counter = Counter(sources)
-            chart_data = {"Source": list(counter.keys()), "Chunks": list(counter.values())}
-            st.bar_chart(chart_data, x="Source", y="Chunks", height=200)
+        counter = Counter(sources)
+        src_df = {"文件名": list(counter.keys()), "块数": list(counter.values())}
+        src_chart = alt.Chart(pd.DataFrame(src_df)).mark_bar().encode(
+            x=alt.X("文件名:N", axis=alt.Axis(labelAngle=0, labelLimit=120), sort=None),
+            y=alt.Y("块数:Q"),
+        ).properties(height=250, width=400)
+        st.altair_chart(src_chart, use_container_width=True)
 
-            # 来源详情
-            st.markdown("**来源详情:**")
-            for src, cnt in counter.most_common():
-                pct = cnt / len(chunks) * 100
-                st.markdown(
-                    f'<span class="source-tag">{src}</span> '
-                    f'{cnt} 块 ({pct:.0f}%)',
-                    unsafe_allow_html=True,
-                )
+        st.markdown("**来源详情:**")
+        for src, cnt in counter.most_common():
+            pct = cnt / len(chunks) * 100
+            st.markdown(
+                f'<span class="source-tag">{src}</span> '
+                f'{cnt} 块 ({pct:.0f}%)',
+                unsafe_allow_html=True,
+            )
 
 
 def render_chunk_detail(chunks: list):
@@ -341,11 +350,11 @@ def render_chunk_detail(chunks: list):
     if not chunks:
         return
 
-    with st.expander(f"📄 全部检索结果详情 ({len(chunks)} 个块)", expanded=False):
+    with st.expander(f"📄 全部检索结果详情 ({len(chunks)} 个块)", expanded=True):
         for i, c in enumerate(chunks):
             score = c.get("score", 0)
             source = Path(c.get("source", "unknown")).name
-            snippet = c.get("content_snippet", "")[:200]
+            snippet = c.get("content_snippet", "")[:400]
             pct = min(score * 100 / 0.3, 100)  # max at 0.3 → 100%
 
             st.markdown(

@@ -515,7 +515,7 @@ async def ask_trace(request: QueryRequest, http_request: Request = None):
         chunks_trimmed = []
         for c in result.get("retrieved_chunks", []):
             chunks_trimmed.append({
-                "content_snippet": c.get("content", "")[:300],
+                "content_snippet": c.get("content", "")[:600],
                 "score": c.get("score", 0),
                 "source": c.get("metadata", {}).get("source", "unknown"),
                 "source_type": c.get("metadata", {}).get("source_type", "text"),

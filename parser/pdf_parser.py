@@ -76,18 +76,27 @@ class PDFParser:
                     results.append(page_result)
                     continue
 
-            # 模式3: 原始字符串（兜底）
-            if not page_result["text"]:
-                raw = page.get_text("raw").strip()
-                # raw 模式可能包含乱码，过滤掉不可打印字符
-                if raw:
-                    clean = "".join(c for c in raw if c.isprintable() or c in "\n\t").strip()
-                    if len(clean) > 20:
-                        page_result["text"] = clean
-                        results.append(page_result)
-                        continue
+            # OCR 兜底：PyMuPDF 几乎读不到文字时尝试 Tesseract
+            if len(page_result["text"].strip()) < 10:
+                try:
+                    import pytesseract
+                    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+                    import os
+                    tessdata = os.path.expanduser("~/tessdata")
+                    if os.path.isdir(tessdata):
+                        pytesseract.pytesseract.tessdata_dir = tessdata
 
-            # 无文字 → 保留空记录（标记为图片页）
+                    pix = page.get_pixmap(dpi=200)
+                    img_bytes = pix.tobytes("png")
+                    import io
+                    ocr_text = pytesseract.image_to_string(io.BytesIO(img_bytes), lang="chi_sim+eng")
+                    if ocr_text.strip():
+                        page_result["text"] = ocr_text.strip()
+                        page_result["ocr"] = True
+                        logger.debug(f"第{page_num+1}页 OCR 识别: {ocr_text.strip()[:60]}")
+                except Exception as e:
+                    logger.debug(f"第{page_num+1}页 OCR 跳过: {e}")
+
             results.append(page_result)
 
         doc.close()
