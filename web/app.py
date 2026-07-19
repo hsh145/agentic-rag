@@ -162,110 +162,61 @@ def format_sources(sources: list[str]) -> str:
 # 侧边栏
 # ============================================================
 with st.sidebar:
-    st.markdown("### ⚙️ 配置")
+    st.markdown("### 🧠 Agentic RAG")
 
-    # 后端地址
-    backend_url = st.text_input(
-        "后端地址",
-        value=st.session_state.backend_url,
-        placeholder="http://localhost:8000",
-        help="FastAPI 后端服务的地址",
-    )
-    st.session_state.backend_url = backend_url.rstrip("/")
+    # ---- 导航 ----
+    st.markdown("#### 🧭 页面")
+    st.page_link("app.py", label="💬 对话", icon="💬")
+    st.page_link("pages/trace.py", label="🔍 溯源问答", icon="🔍")
+    st.page_link("pages/workbench.py", label="⚙️ 工作台", icon="⚙️")
 
-    # 健康检查
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("#### 服务状态")
-    with col2:
-        if st.button("刷新", use_container_width=True):
-            st.session_state.health_ok = None
+    st.divider()
 
+    # ---- 服务状态（精简）----
     health_data = check_health(st.session_state.backend_url)
     if health_data:
-        st.session_state.health_ok = True
         st.markdown(
             f'<span class="status-badge status-ok">● 运行中</span>',
             unsafe_allow_html=True,
         )
-        if not health_data.get("api_key_configured"):
-            st.warning("⚠️ API Key 未配置", icon="⚠️")
     else:
-        st.session_state.health_ok = False
         st.markdown(
             f'<span class="status-badge status-err">● 无法连接</span>',
             unsafe_allow_html=True,
         )
-        st.error("后端服务未启动或被关闭", icon="🔴")
 
-    st.divider()
+    # ---- 高级配置（折叠）----
+    with st.expander("⚙️ 高级配置", expanded=False):
+        backend_url = st.text_input(
+            "后端地址", value=st.session_state.backend_url,
+            placeholder="http://localhost:8000",
+        )
+        st.session_state.backend_url = backend_url.rstrip("/")
 
-    # 查询参数
-    st.markdown("#### 🔍 检索参数")
-    max_iterations = st.slider(
-        "最大检索迭代次数",
-        min_value=1,
-        max_value=5,
-        value=2,
-        help="迭代次数越多，检索越深入，但耗时也更长",
-    )
+        max_iterations = st.slider(
+            "最大检索迭代", min_value=1, max_value=5, value=2,
+            help="迭代次数越多，检索越深入",
+        )
 
-    st.divider()
+        file_paths_text = st.text_area(
+            "文件路径（可选）", placeholder="每行一个路径",
+            height=80, label_visibility="collapsed",
+        )
+        file_paths = [p.strip() for p in file_paths_text.split("\n") if p.strip()]
 
-    # 文件路径输入
-    st.markdown("#### 📁 文件路径")
-    st.caption("输入需要检索的文件路径（可选），每行一个")
-    file_paths_text = st.text_area(
-        "文件路径列表",
-        placeholder="""例如：
-C:/docs/论文.pdf
-./data/docs/报告.docx""",
-        height=100,
-        label_visibility="collapsed",
-    )
-    file_paths = [p.strip() for p in file_paths_text.split("\n") if p.strip()]
-
-    if file_paths:
-        st.info(f"已添加 {len(file_paths)} 个文件", icon="📎")
-
-    st.divider()
-
-    # 会话信息
-    st.markdown("#### 💬 会话")
+    # ---- 会话信息（精简）----
     if st.session_state.get("session_id"):
-        sid = st.session_state.session_id
-        st.caption(f"ID: `{sid[:20]}...`")
+        st.caption(f"会话: `{st.session_state.session_id[:16]}...`")
         mem = st.session_state.get("memory_stats", {})
         if mem:
-            st.caption(f"历史: {mem.get('history_len', 0)} 轮 | 记忆: {mem.get('facts_recalled', 0)} 条")
-        if st.button("🔄 新建会话", use_container_width=True, type="secondary"):
+            st.caption(f"历史 {mem.get('history_len', 0)} 轮 | 记忆 {mem.get('facts_recalled', 0)} 条")
+        if st.button("🔄 新建会话", use_container_width=True):
             st.session_state.session_id = ""
             st.session_state.messages = []
             st.session_state.memory_stats = {}
             st.rerun()
     else:
-        st.caption("新会话（首次提问后自动创建）")
-
-    st.divider()
-
-    # 导航
-    st.markdown("#### 🧭 导航")
-    st.page_link("app.py", label="💬 对话", icon="💬")
-    if st.button("🔍 溯源问答", use_container_width=True, help="查看逐跳检索轨迹"):
-        st.switch_page("pages/trace.py")
-    if st.button("⚙️ 工作台", use_container_width=True, help="知识构建 / 反馈 / Wiki"):
-        st.switch_page("pages/workbench.py")
-
-    st.divider()
-
-    # 关于
-    st.markdown("#### ℹ️ 关于")
-    st.caption(
-        "**Agentic RAG** — 多格式智能检索系统\n\n"
-        "支持 PDF、Word、Excel、图片、\n"
-        "文本及代码文件的自动解析与\n"
-        "AI 驱动的知识检索。"
-    )
+        st.caption("新会话（首次提问自动创建）")
 
 
 # ============================================================
