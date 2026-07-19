@@ -31,6 +31,12 @@ st.markdown("""
         margin-bottom: 0.2rem;
     }
     .trace-header p { color: #6b7280; font-size: 0.95rem; }
+    /* 隐藏 Streamlit 自带 deploy 按钮和顶部白条 */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppToolbar {display: none;}
+    .stAppDeployButton {display: none;}
+    .block-container {padding-top: 1rem !important;}
     .timeline-node {
         border-left: 3px solid #0ea5e9;
         padding: 0.6rem 1rem;

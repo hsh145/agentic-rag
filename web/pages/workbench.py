@@ -27,6 +27,12 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
+    /* 隐藏 Streamlit 自带 deploy 按钮和顶部白条 */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppToolbar {display: none;}
+    .stAppDeployButton {display: none;}
+    .block-container {padding-top: 1rem !important;}
     .wb-header h1 {
         font-size: 1.8rem; font-weight: 700;
         background: linear-gradient(135deg, #0ea5e9, #8b5cf6);

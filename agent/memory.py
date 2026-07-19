@@ -702,6 +702,7 @@ class AgentMemory:
         return self.long_term.forget_duplicates()
 
     # ---- 统计 ----
+    def stats(self) -> Dict:
         return {
             "session_count": self.session.get_session_count(),
             "fact_count": self.long_term.get_fact_count(),

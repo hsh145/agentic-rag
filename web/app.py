@@ -21,6 +21,14 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
+    /* 隐藏 Streamlit 自带 deploy 按钮和顶部白条 */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppToolbar {display: none;}
+    .stAppDeployButton {display: none;}
+    .stMainBlockContainer {padding-top: 0rem !important;}
+    .block-container {padding-top: 1rem !important;}
+
     .main-header {
         text-align: center;
         padding: 1rem 0;
@@ -103,14 +111,10 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "backend_url" not in st.session_state:
     st.session_state.backend_url = "http://localhost:8000"
-if "health_ok" not in st.session_state:
-    st.session_state.health_ok = None
 if "session_id" not in st.session_state:
-    st.session_state.session_id = ""  # 空 = 后端自动生成，后端返回后保存
+    st.session_state.session_id = ""
 if "memory_stats" not in st.session_state:
     st.session_state.memory_stats = {}
-if "current_session" not in st.session_state:
-    st.session_state.current_session = "新建"
 
 
 # ============================================================
@@ -164,59 +168,47 @@ def format_sources(sources: list[str]) -> str:
 with st.sidebar:
     st.markdown("### 🧠 Agentic RAG")
 
-    # ---- 导航 ----
-    st.markdown("#### 🧭 页面")
-    st.page_link("app.py", label="💬 对话", icon="💬")
-    st.page_link("pages/trace.py", label="🔍 溯源问答", icon="🔍")
-    st.page_link("pages/workbench.py", label="⚙️ 工作台", icon="⚙️")
+    # ===== 区块1：导航 =====
+    st.markdown("**导航**")
+    st.page_link("app.py", label="💬 对话")
+    st.page_link("pages/trace.py", label="🔍 溯源问答")
+    st.page_link("pages/workbench.py", label="⚙️ 工作台")
 
     st.divider()
 
-    # ---- 服务状态（精简）----
+    # ===== 区块2：服务状态 =====
     health_data = check_health(st.session_state.backend_url)
     if health_data:
-        st.markdown(
-            f'<span class="status-badge status-ok">● 运行中</span>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<span class="status-badge status-ok">● 运行中</span>', unsafe_allow_html=True)
     else:
-        st.markdown(
-            f'<span class="status-badge status-err">● 无法连接</span>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<span class="status-badge status-err">● 无法连接</span>', unsafe_allow_html=True)
 
-    # ---- 高级配置（折叠）----
-    with st.expander("⚙️ 高级配置", expanded=False):
-        backend_url = st.text_input(
-            "后端地址", value=st.session_state.backend_url,
-            placeholder="http://localhost:8000",
-        )
+    # ===== 区块3：基础配置（常显）=====
+    backend_url = st.text_input("后端地址", value=st.session_state.backend_url, label_visibility="collapsed")
+    if backend_url != st.session_state.backend_url:
         st.session_state.backend_url = backend_url.rstrip("/")
 
-        max_iterations = st.slider(
-            "最大检索迭代", min_value=1, max_value=5, value=2,
-            help="迭代次数越多，检索越深入",
-        )
-
-        file_paths_text = st.text_area(
-            "文件路径（可选）", placeholder="每行一个路径",
-            height=80, label_visibility="collapsed",
-        )
-        file_paths = [p.strip() for p in file_paths_text.split("\n") if p.strip()]
-
-    # ---- 会话信息（精简）----
-    if st.session_state.get("session_id"):
-        st.caption(f"会话: `{st.session_state.session_id[:16]}...`")
-        mem = st.session_state.get("memory_stats", {})
-        if mem:
-            st.caption(f"历史 {mem.get('history_len', 0)} 轮 | 记忆 {mem.get('facts_recalled', 0)} 条")
-        if st.button("🔄 新建会话", use_container_width=True):
+    col_i, col_f = st.columns([3, 1])
+    with col_i:
+        max_iterations = st.slider("迭代次数", 1, 5, 2)
+    with col_f:
+        if st.button("🔄 新会话", use_container_width=True):
             st.session_state.session_id = ""
             st.session_state.messages = []
             st.session_state.memory_stats = {}
-            st.rerun()
-    else:
-        st.caption("新会话（首次提问自动创建）")
+
+    # 会话摘要
+    if st.session_state.get("session_id"):
+        mem = st.session_state.get("memory_stats", {})
+        parts = [f"`{st.session_state.session_id[:12]}...`"]
+        if mem:
+            parts.append(f"历史 {mem.get('history_len',0)} 轮")
+        st.caption(" | ".join(parts))
+
+    # ===== 区块4：高级配置（折叠）=====
+    with st.expander("📁 文件路径等", expanded=False):
+        file_paths_text = st.text_area("文件路径（可选）", placeholder="每行一个路径", height=80, label_visibility="collapsed")
+        file_paths = [p.strip() for p in file_paths_text.split("\n") if p.strip()]
 
 
 # ============================================================
@@ -252,9 +244,10 @@ for msg in st.session_state.messages:
 
 # --- 底部输入 ---
 if prompt := st.chat_input("请输入你的问题..."):
-    # 检查后端是否可用
-    if not st.session_state.health_ok:
-        st.error("❌ 后端服务不可用，请先在侧边栏确认服务状态", icon="🔴")
+    # 提交时实时检查后端，而非依赖可能过期的状态
+    live_check = check_health(st.session_state.backend_url)
+    if not live_check:
+        st.error("❌ 后端服务不可用，请确认后端已启动（侧边栏显示运行中）", icon="🔴")
         st.stop()
 
     # 添加用户消息
