@@ -169,6 +169,19 @@ def parse_intent(state: AgenticRAGState) -> Dict[str, Any]:
     query = state["query"]
     file_paths = state.get("file_paths", [])
 
+    # ---- 输入护栏：检测 prompt injection ----
+    from .guardrails import InputGuard, OutputGuard
+    guard = InputGuard()
+    check = guard.check(query)
+    if not check["safe"]:
+        logger.warning(f"输入护栏拦截: {check['details']}")
+        return {
+            "error": f"输入包含不安全内容，已拦截",
+            "agentic_trace": [{"hop": 0, "type": "parse_intent", "blocked": True, "reason": check["details"]}],
+            "messages": [AIMessage(content="[安全拦截] 输入包含不安全模式，已拒绝处理。")],
+        }
+    query = InputGuard.sanitize(query)
+
     prompt = f"""分析用户问题，输出 JSON：
 
 用户问题：{query}
@@ -702,9 +715,29 @@ def generate_answer(state: AgenticRAGState) -> Dict[str, Any]:
 - 在回答末尾列出参考来源"""
 
     response = llm.invoke([HumanMessage(content=prompt)])
+    final_answer = response.content
+
+    # ---- 输出护栏：source 验证 + 脱敏 ----
+    from .guardrails import OutputGuard
+    og = OutputGuard()
+
+    # 来源验证
+    source_check = og.verify_sources(final_answer, chunks)
+    if not source_check["verified"] and source_check["unverified_claims"]:
+        logger.warning(f"输出护栏: {len(source_check['unverified_claims'])} 个 claim 无法溯源")
+        unverified_text = "；".join(source_check["unverified_claims"][:3])
+        final_answer += f"\n\n> ⚠️ **溯源提醒**: 以下内容未在检索文档中找到明确依据: {unverified_text}"
+
+    # 脱敏
+    final_answer = og.desensitize(final_answer)
+
+    # 拒答检查
+    if og.check_refusal_needed(final_answer, chunks):
+        final_answer = "抱歉，我未能在知识库中找到相关信息来回答这个问题。\n\n请尝试换一种方式提问，或确保知识库中包含相关内容。"
+        logger.warning("输出护栏: 无证据情况下触发拒答")
 
     return {
-        "final_answer": response.content,
+        "final_answer": final_answer,
         "sources": sources,
         "completed": True,
         "agentic_trace": [{
@@ -712,7 +745,9 @@ def generate_answer(state: AgenticRAGState) -> Dict[str, Any]:
             "type": "generate_answer",
             "chunks_used": len(chunks),
             "sources": sources,
-            "answer_snippet": response.content[:300],
+            "source_verified": source_check["verified"],
+            "unverified_claims": source_check["unverified_claims"][:3],
+            "answer_snippet": final_answer[:300],
         }],
         "messages": [AIMessage(content=response.content)],
     }
