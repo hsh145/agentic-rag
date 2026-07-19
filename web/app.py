@@ -21,10 +21,7 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
-    /* 隐藏 Streamlit 自带 deploy 按钮和顶部白条 */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    .stAppToolbar {display: none;}
+    /* 只隐藏 deploy 按钮，不动其他任何东西 */
     .stAppDeployButton {display: none;}
     .stMainBlockContainer {padding-top: 0rem !important;}
     .block-container {padding-top: 1rem !important;}
@@ -170,8 +167,7 @@ with st.sidebar:
 
     # ===== 区块1：导航 =====
     st.markdown("**导航**")
-    st.page_link("app.py", label="💬 对话")
-    st.page_link("pages/trace.py", label="🔍 溯源问答")
+    st.page_link("app.py", label="💬 对话溯源")
     st.page_link("pages/workbench.py", label="⚙️ 工作台")
 
     st.divider()
