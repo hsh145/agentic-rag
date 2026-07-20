@@ -8,8 +8,49 @@ from langchain_core.documents import Document
 
 from parser import FileTypeDetector, PDFParser, OfficeParser, ImageParser, TextParser
 from rag import HybridRetriever
+from .utils import retry
 
 logger = logging.getLogger("agent.tools")
+
+
+# ================================================================
+# 规则层意图匹配（第一层兜底）
+# ================================================================
+_INTENT_RULES = [
+    # (关键词列表, 意图类型, 是否需要文件解析)
+    (["退货", "退款", "退换"], "refund", False),
+    (["订单查询", "查订单", "订单状态", "物流"], "order_query", False),
+    (["改地址", "修改地址", "换地址"], "change_address", False),
+    (["客服", "人工", "投诉"], "human_service", False),
+    (["价格", "多少钱", "报价", "报价单"], "price_query", False),
+    (["合同", "签署", "签约"], "contract", False),
+    (["发票", "开票"], "invoice", False),
+    (["登录", "账号", "密码", "登不上"], "account_issue", False),
+]
+
+
+def rule_intent_match(query: str) -> Optional[dict]:
+    """规则层意图匹配 — 毫秒级，0成本
+
+    在调 LLM 之前先跑一遍关键词规则。
+    命中直接返回，不命中返回 None，由上层决定是否走 LLM。
+
+    Returns:
+        {"intent": str, "matched_keyword": str} 或 None
+    """
+    q = query.lower()
+    for keywords, intent, need_file in _INTENT_RULES:
+        for kw in keywords:
+            if kw in q:
+                logger.info(f"规则意图命中: '{kw}' → {intent}")
+                return {
+                    "intent": intent,
+                    "matched_keyword": kw,
+                    "need_file_parse": need_file,
+                    "need_rag_search": True,
+                    "query_type": intent,
+                }
+    return None
 
 
 class DocumentParserTool:
@@ -22,26 +63,34 @@ class DocumentParserTool:
         self.image_parser = ImageParser(api_key=api_key)
         self.text_parser = TextParser()
 
+    @retry(max_attempts=2, base_delay=1.0, exceptions=(OSError, PermissionError))
+    def parse_file_single(self, fp: str) -> tuple:
+        """单个文件解析（带重试）"""
+        ftype = FileTypeDetector.detect(fp)
+        if ftype == "pdf":
+            docs = self.pdf_parser.parse(fp)
+        elif ftype in ("docx", "xlsx", "xls"):
+            docs = self.office_parser.parse(fp)
+        elif ftype == "image":
+            docs = self.image_parser.parse(fp)
+        elif ftype in ("text", "markdown"):
+            docs = self.text_parser.parse(fp)
+        else:
+            return [], f"不支持的文件类型: {fp}"
+        return docs, None
+
     def parse_files(self, file_paths: List[str]) -> tuple:
         """解析文件列表，返回 (documents, errors)"""
         all_docs = []
         errors = []
 
         for fp in file_paths:
-            ftype = FileTypeDetector.detect(fp)
             try:
-                if ftype == "pdf":
-                    docs = self.pdf_parser.parse(fp)
-                elif ftype in ("docx", "xlsx", "xls"):
-                    docs = self.office_parser.parse(fp)
-                elif ftype == "image":
-                    docs = self.image_parser.parse(fp)
-                elif ftype in ("text", "markdown"):
-                    docs = self.text_parser.parse(fp)
+                docs, err = self.parse_file_single(fp)
+                if err:
+                    errors.append(err)
                 else:
-                    errors.append(f"不支持的文件类型: {fp}")
-                    continue
-                all_docs.extend(docs)
+                    all_docs.extend(docs)
             except Exception as e:
                 errors.append(f"解析失败 {fp}: {e}")
 

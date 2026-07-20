@@ -182,6 +182,24 @@ def parse_intent(state: AgenticRAGState) -> Dict[str, Any]:
         }
     query = InputGuard.sanitize(query)
 
+    # ---- 规则层意图匹配（毫秒级，0成本，命中直接跳过 LLM）----
+    from .tools import rule_intent_match
+    rule_result = rule_intent_match(query)
+    if rule_result:
+        logger.info(f"规则层命中: {rule_result['intent']}")
+        return {
+            "parsed_documents": [],
+            "agentic_trace": [{
+                "hop": 0, "type": "parse_intent",
+                "source": "rule", "intent": rule_result["intent"],
+                "analysis": f"规则匹配: {rule_result['matched_keyword']} → {rule_result['intent']}",
+            }],
+            "messages": [
+                HumanMessage(content=query),
+                AIMessage(content=f"[规则意图] {rule_result['intent']}"),
+            ],
+        }
+
     prompt = f"""分析用户问题，输出 JSON：
 
 用户问题：{query}
